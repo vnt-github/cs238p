@@ -1,0 +1,6 @@
+- q6: https://www.oreilly.com/library/view/programming-embedded-systems/0596009836/ch04.html#:~:text=The%20job%20of%20the%20linker,all%20of%20the%20unresolved%20symbols.&text=It%20does%20this%20by%20merging,sections%20of%20the%20input%20files.
+    - linker handles bss also.
+    - https://stackoverflow.com/questions/1045501/how-do-i-share-variables-between-different-c-files
+    - shared variables are global variables.
+- q7: https://en.wikibooks.org/wiki/C%2B%2B_Programming/Programming_Languages/C%2B%2B/Code/Keywords/extern#:~:text=The%20extern%20keyword%20tells%20the,outside%20of%20the%20current%20scope).&text=declares%20that%20there%20is%20a,defined%20somewhere%20in%20the%20program.
+    - extern variable is defined elsewhere.

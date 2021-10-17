@@ -11,7 +11,7 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}",
+                "${fileDirname}/${fileBasenameNoExtension}.bin",
                 "-lm",
                 "-fno-pic",
                 "-m32"
