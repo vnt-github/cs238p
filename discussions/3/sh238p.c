@@ -9,6 +9,72 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+
+void shiftLeft(char **args, int from_i, int shift_len) {
+  size_t i = from_i;
+  size_t size_args = sizeof(args);
+  while (i + shift_len <= size_args) {
+    args[i] = args[i+shift_len];
+    i++;
+  }
+  while (i <= size_args) {
+    args[i] = NULL;
+    i += 1;
+  }
+  // printf("shifted: %s", *args);
+
+  return;
+}
+
+void setInputRedirections(char **args) {
+  size_t i = 0;
+  while (args[i] && strcmp(args[i], "<")) {
+    // printf("%s\n", args[i]);
+    i++;
+  }
+  if (i < sizeof(args) && args[i] && !strcmp(args[i], "<")) {
+    i++;
+    if (i >= sizeof(args)) {
+      perror("input file name missing");
+      return;
+    }
+    close(0);
+    int ip = open(args[i], O_RDONLY);
+    if (ip < 0) {
+      perror("error opening input file");
+    }
+    // printf("input filename: %s %d\n", args[i], ip);
+    shiftLeft(args, i-1, 2);
+  }
+
+  return;
+}
+
+void setOutputRedirections(char **args) {
+  size_t i = 0;
+  while (args[i] && strcmp(args[i], ">")) {
+    // printf("%s\n", args[i]);
+    i++;
+  }
+  if (i < sizeof(args) && args[i] && !strcmp(args[i], ">")) {
+    i++;
+    if (i >= sizeof(args)) {
+      perror("output file name missing");
+      return;
+    }
+    printf("%s", args[i]);
+    close(1);
+    int ip = open(args[i], O_WRONLY|O_CREAT, 0644);
+    if (ip < 0) {
+      perror("error opening Output file");
+    }
+    // printf("output filename: %s %d\n", args[i], ip);
+    shiftLeft(args, i-1, 2);
+  }
+
+  return;
+}
+
 /**
  ** @brief Launch a program and wait for it to terminate.
  ** @param args Null terminated list of arguments (including program).
@@ -16,7 +82,25 @@
  */
 int sh_launch(char **args){
     /* most of your code here */
-    return system(args[0]);
+
+    int pid, wait_p_id, status;
+    if ((pid = fork()) < 0) {
+        perror("fork call failed");
+        return 0;
+    } else if (pid == 0) {
+        setInputRedirections(args);
+        setOutputRedirections(args);
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        do {
+            wait_p_id = waitpid(pid, &status, WUNTRACED);
+            printf("\nwait_p_id %d\n", wait_p_id);
+        } while (!WIFEXITED(status) && WIFSIGNALED(status));
+    }
+    return 1;
 }
 
 
@@ -29,13 +113,6 @@ int sh_execute(char **args){
 //   int i;
   if (args[0] == NULL) {
     return 1;  // An empty command was entered.
-  }
-  int pid;
-  if ((pid = fork()) < 0) {
-      printf("fork call failed");
-      return 0;
-  } else if (pid == 0) {
-      execv(NULL, "ls");
   }
 
   return sh_launch(args);   // launch
