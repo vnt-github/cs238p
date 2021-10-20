@@ -12,12 +12,11 @@
 
 void shiftLeft(char **args, int from_i, int shift_len) {
   size_t i = from_i;
-  size_t size_args = sizeof(args);
-  while (i + shift_len <= size_args) {
+  while (args[i+shift_len]) {
     args[i] = args[i+shift_len];
     i++;
   }
-  while (i <= size_args) {
+  while (args[i]) {
     args[i] = NULL;
     i += 1;
   }
@@ -32,9 +31,9 @@ void setInputRedirections(char **args) {
     // printf("%s\n", args[i]);
     i++;
   }
-  if (i < sizeof(args) && args[i] && !strcmp(args[i], "<")) {
+  if (args[i] && !strcmp(args[i], "<")) {
     i++;
-    if (i >= sizeof(args)) {
+    if (!args[i]) {
       perror("input file name missing");
       return;
     }
@@ -56,13 +55,12 @@ void setOutputRedirections(char **args) {
     // printf("%s\n", args[i]);
     i++;
   }
-  if (i < sizeof(args) && args[i] && !strcmp(args[i], ">")) {
+  if (args[i] && !strcmp(args[i], ">")) {
     i++;
-    if (i >= sizeof(args)) {
+    if (!args[i]) {
       perror("output file name missing");
       return;
     }
-    printf("%s", args[i]);
     close(1);
     int ip = open(args[i], O_WRONLY|O_CREAT, 0644);
     if (ip < 0) {
