@@ -12,6 +12,19 @@
 #define SH_TOK_BUFSIZE 64
 #define SH_TOK_DELIM " \t\r\n\a"
 
+int waitfor(int pid) {
+  int ret_pid, status;
+  do {
+      ret_pid = waitpid(pid, &status, WUNTRACED);
+      if (ret_pid == -1)
+        perror("delivery of a signal to the calling process\n");
+  } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+  if (status) {
+    fprintf(stderr, "pid %d did not exit normally, status: %d\n", pid, status);
+  }
+  return !status;
+}
+
 void shiftLeft(char **args, int from_i, int shift_len) {
   size_t i = from_i;
   while (args[i+shift_len]) {
@@ -79,7 +92,7 @@ void run_command(char **args) {
   setInputRedirections(args);
   setOutputRedirections(args);
   if (execvp(args[0], args) == -1) {
-      // printf("to execute: %s\n", args[0]);
+      fprintf(stderr, "execvp failed to execute: %s\n", args[0]);
       perror("execvp failed");
   }
   exit(EXIT_FAILURE);
@@ -120,6 +133,8 @@ void run_pipe_commands(char **args) {
   int pid_left = fork();
   if (pid_left < 0) {
     perror("pipe left fork failed");
+    free(left);
+    free(right);
     return;
   }
   if (pid_left == 0) {
@@ -132,6 +147,8 @@ void run_pipe_commands(char **args) {
   int pid_right = fork();
   if (pid_right < 0) {
     perror("pipe right fork failed");
+    free(left);
+    free(right);
     return;
   }
   if (pid_right == 0) {
@@ -143,22 +160,15 @@ void run_pipe_commands(char **args) {
   }
   close(p[0]);
   close(p[1]);
-  int status_left, status_right;
-  int pid_left_ret = waitpid(pid_left, &status_left, WUNTRACED);
-  if (pid_left_ret == -1) {
-    perror("pid_right_ret delivery of a signal to the calling process");
+  if (!waitfor(pid_left)) {
+    fprintf(stderr, "pid_left: %d did not exit normally\n", pid_left);
   }
-  if (!WIFEXITED(status_left)) {
-    printf("left child did not exit normally %d ", WEXITSTATUS(status_left));
-  }
-  int pid_right_ret = waitpid(pid_right, &status_right, WUNTRACED);
-  if (pid_right_ret == -1) {
-    perror("pid_right_ret delivery of a signal to the calling process");
-  }
-  if (!WIFEXITED(status_right)) {
-    printf("right child did not exit normally %d", WEXITSTATUS(status_right));
+  if (!waitfor(pid_right)) {
+    fprintf(stderr, "pid_right: %d did not exit normally\n", pid_right);
   }
 
+  free(left);
+  free(right);
   exit(EXIT_SUCCESS);
   return;
 }
@@ -192,19 +202,15 @@ void run(char **args) {
 int sh_launch(char **args){
     /* most of your code here */
 
-    int pid, wait_p_id, status;
+    int pid;
     if ((pid = fork()) < 0) {
         perror("fork call failed");
         return 0;
     } else if (pid == 0) {
+      // printf("child %d \n", (int) getpid());
       run(args);
     }
-    wait_p_id = waitpid(pid, &status, WUNTRACED);
-    if (wait_p_id == -1) {
-      perror(" delivery of a signal to the calling process");
-      return 0;
-    }
-    return WIFEXITED(status);
+    return waitfor(pid);
 }
 
 
