@@ -109,7 +109,7 @@ void setOutputRedirections(char **args) {
 }
 
 int run_build_in(char **args) {
-  if (!strcmp(args[0], "cd")) {
+  if (args[0] && !strcmp(args[0], "cd")) {
     if (!args[1]) {
       fprintf(stderr, "cd: missing directory to move to");
     }
@@ -118,7 +118,7 @@ int run_build_in(char **args) {
       fprintf(stderr, "target dir: %s\n", args[1]);
     }
     return 1;
-  } else if (!strcmp(args[0], "history")) {
+  } else if (args[0] && !strcmp(args[0], "history")) {
     unsigned i = 0;
     while (i < history_count) {
       printf("\t %d %s", i+1, history[i]);
@@ -157,6 +157,7 @@ void run_pipe_commands(char **args) {
     i++;
     l_i++;
   }
+  left[l_i] = NULL;
   
   if (!args[i] || strcmp(args[i], "|") || !args[i+1]) {
     run_command(left);
@@ -171,6 +172,7 @@ void run_pipe_commands(char **args) {
     i++;
     r_i++;
   }
+  right[r_i] = NULL;
 
   int p[2];
   if (pipe(p) < 0) {
@@ -259,6 +261,23 @@ int sh_launch(char **args){
     return waitfor(pid);
 }
 
+int split_semicolons(char **args, int* from_i, char **semicolon_split) {
+  size_t insert_i = 0;
+
+  while (args[*from_i] && strcmp(args[*from_i], ";")) {
+    semicolon_split[insert_i] = strdup(args[*from_i]);
+    insert_i++;
+    (*from_i)++;
+  }
+  semicolon_split[insert_i] = NULL;
+
+  if (args[*from_i] && !strcmp(args[*from_i], ";")) {
+    (*from_i)++;
+    return 1;
+  }
+  return 0;
+}
+
 
 /**
  ** @brief Execute shell built-in or launch program.
@@ -271,7 +290,20 @@ int sh_execute(char **args){
     return 1;  // An empty command was entered.
   }
 
-  return sh_launch(args);   // launch
+  int bufsize = 4*SH_TOK_BUFSIZE;
+  char **semicolon_split_cmd = malloc(bufsize*sizeof(char **));
+  int from_i = 0;
+  int start_i = 0;
+  while (split_semicolons(args, &from_i, semicolon_split_cmd)) {
+    if (!sh_launch(semicolon_split_cmd)) {
+      free(semicolon_split_cmd);
+      return 0;
+    }
+    start_i = from_i;
+  }
+
+  free(semicolon_split_cmd);
+  return sh_launch(&args[start_i]);   // launch
 }
 
 
