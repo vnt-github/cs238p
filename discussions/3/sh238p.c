@@ -108,9 +108,35 @@ void setOutputRedirections(char **args) {
   return;
 }
 
+int run_build_in(char **args) {
+  if (!strcmp(args[0], "cd")) {
+    if (!args[1]) {
+      fprintf(stderr, "cd: missing directory to move to");
+    }
+    if (chdir(args[1])) {
+      perror("chdir failed");
+      fprintf(stderr, "target dir: %s\n", args[1]);
+    }
+    return 1;
+  } else if (!strcmp(args[0], "history")) {
+    unsigned i = 0;
+    while (i < history_count) {
+      printf("\t %d %s", i+1, history[i]);
+      i++;
+    }
+    return 1;
+  }
+  return 0;
+}
+
 void run_command(char **args) {
   setInputRedirections(args);
   setOutputRedirections(args);
+
+  if (run_build_in(args)) {
+    exit(EXIT_SUCCESS);
+  }
+
   if (execvp(args[0], args) == -1) {
       fprintf(stderr, "execvp failed to execute: %s\n", args[0]);
       perror("execvp failed");
@@ -233,26 +259,6 @@ int sh_launch(char **args){
     return waitfor(pid);
 }
 
-int runBuildIn(char **args) {
-  if (!strcmp(args[0], "cd")) {
-    if (!args[1]) {
-      fprintf(stderr, "cd: missing directory to move to");
-    }
-    if (chdir(args[1])) {
-      perror("chdir failed");
-      fprintf(stderr, "target dir: %s\n", args[1]);
-    }
-    return 1;
-  } else if (!strcmp(args[0], "history")) {
-    unsigned i = 0;
-    while (i < history_count) {
-      printf("\t %d %s", i+1, history[i]);
-      i++;
-    }
-    return 1;
-  }
-  return 0;
-}
 
 /**
  ** @brief Execute shell built-in or launch program.
@@ -263,10 +269,6 @@ int sh_execute(char **args){
 //   int i;
   if (args[0] == NULL) {
     return 1;  // An empty command was entered.
-  }
-
-  if (runBuildIn(args)) {
-    return 1;
   }
 
   return sh_launch(args);   // launch
