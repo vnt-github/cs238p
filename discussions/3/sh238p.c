@@ -11,6 +11,26 @@
 
 #define SH_TOK_BUFSIZE 64
 #define SH_TOK_DELIM " \t\r\n\a"
+#define HISTORY_MAX_SIZE 256
+
+char *history[HISTORY_MAX_SIZE];
+unsigned history_count = 0;
+
+void add_to_history(char *command)
+{
+  if (history_count < HISTORY_MAX_SIZE) {
+    // strdup allocates memory for the new string on the heap.
+    history[history_count++] = strdup(command);
+  } else {
+    free(history[0]);
+    unsigned i=1;
+    while (i < HISTORY_MAX_SIZE) {
+      history[i - 1] = history[i];
+      i++;
+    }
+    history[HISTORY_MAX_SIZE - 1] = strdup(command);
+  }
+}
 
 int waitfor(int pid) {
   int ret_pid, status;
@@ -107,7 +127,7 @@ void run_pipe_commands(char **args) {
   size_t i = 0;
   size_t l_i = 0;
   while (args[i] && strcmp(args[i], "|")) {
-    left[l_i] = args[i];
+    left[l_i] = strdup(args[i]);
     i++;
     l_i++;
   }
@@ -121,7 +141,7 @@ void run_pipe_commands(char **args) {
   size_t r_i = 0;
   char** right = malloc(bufsize*sizeof(char *));
   while (args[i]) {
-    right[r_i] = args[i];
+    right[r_i] = strdup(args[i]);
     i++;
     r_i++;
   }
@@ -213,6 +233,26 @@ int sh_launch(char **args){
     return waitfor(pid);
 }
 
+int runBuildIn(char **args) {
+  if (!strcmp(args[0], "cd")) {
+    if (!args[1]) {
+      fprintf(stderr, "cd: missing directory to move to");
+    }
+    if (chdir(args[1])) {
+      perror("chdir failed");
+      fprintf(stderr, "target dir: %s\n", args[1]);
+    }
+    return 1;
+  } else if (!strcmp(args[0], "history")) {
+    unsigned i = 0;
+    while (i < history_count) {
+      printf("\t %d %s", i+1, history[i]);
+      i++;
+    }
+    return 1;
+  }
+  return 0;
+}
 
 /**
  ** @brief Execute shell built-in or launch program.
@@ -223,6 +263,10 @@ int sh_execute(char **args){
 //   int i;
   if (args[0] == NULL) {
     return 1;  // An empty command was entered.
+  }
+
+  if (runBuildIn(args)) {
+    return 1;
   }
 
   return sh_launch(args);   // launch
@@ -299,6 +343,7 @@ void sh_loop(void){
         // printf("%d 238p$ ", (int) getpid());
         printf("238p$ ");
         line = sh_read_line();
+        add_to_history(line);
         args = sh_split_line(line);
         status = sh_execute(args);
         free(line);
