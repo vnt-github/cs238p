@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include <errno.h>
 
+#define SH_TOK_BUFSIZE 64
+#define SH_TOK_DELIM " \t\r\n\a"
 
 void shiftLeft(char **args, int from_i, int shift_len) {
   size_t i = from_i;
@@ -79,12 +81,15 @@ void run_command(char **args) {
   if (execvp(args[0], args) == -1) {
       // printf("to execute: %s\n", args[0]);
       perror("execvp failed");
-      exit(EXIT_FAILURE);
   }
+  exit(EXIT_FAILURE);
 }
 
+// TODO: make left and right realloc
 void run_pipe_commands(char **args) {
-  char** left = malloc(100*sizeof(char *));
+  int bufsize = 4*SH_TOK_BUFSIZE;
+
+  char** left = malloc(bufsize*sizeof(char *));
 
   size_t i = 0;
   size_t l_i = 0;
@@ -101,7 +106,7 @@ void run_pipe_commands(char **args) {
 
   i++;
   size_t r_i = 0;
-  char** right = malloc(100*sizeof(char *));
+  char** right = malloc(bufsize*sizeof(char *));
   while (args[i]) {
     right[r_i] = args[i];
     i++;
@@ -123,27 +128,39 @@ void run_pipe_commands(char **args) {
     close(p[0]);
     close(p[1]);
     run_command(left);
-  } else {
-    int pid_right = fork();
-    if (pid_right < 0) {
-      perror("pipe right fork failed");
-      return;
-    }
-    if (pid_right == 0) {
-      close(0);
-      dup(p[0]);
-      close(p[0]);
-      close(p[1]);
-      run_pipe_commands(right);
-    } else {
-      close(p[0]);
-      close(p[1]);
-      int status;
-      waitpid(pid_left, &status, WUNTRACED);
-      waitpid(pid_right, &status, WUNTRACED);
-      return;
-    }
   }
+  int pid_right = fork();
+  if (pid_right < 0) {
+    perror("pipe right fork failed");
+    return;
+  }
+  if (pid_right == 0) {
+    close(0);
+    dup(p[0]);
+    close(p[0]);
+    close(p[1]);
+    run_pipe_commands(right);
+  }
+  close(p[0]);
+  close(p[1]);
+  int status_left, status_right;
+  int pid_left_ret = waitpid(pid_left, &status_left, WUNTRACED);
+  if (pid_left_ret == -1) {
+    perror("pid_right_ret delivery of a signal to the calling process");
+  }
+  if (!WIFEXITED(status_left)) {
+    printf("left child did not exit normally %d ", WEXITSTATUS(status_left));
+  }
+  int pid_right_ret = waitpid(pid_right, &status_right, WUNTRACED);
+  if (pid_right_ret == -1) {
+    perror("pid_right_ret delivery of a signal to the calling process");
+  }
+  if (!WIFEXITED(status_right)) {
+    printf("right child did not exit normally %d", WEXITSTATUS(status_right));
+  }
+
+  exit(EXIT_SUCCESS);
+  return;
 }
 
 void run(char **args) {
@@ -181,15 +198,13 @@ int sh_launch(char **args){
         return 0;
     } else if (pid == 0) {
       run(args);
-    } else {
-        do {
-            wait_p_id = waitpid(pid, &status, WUNTRACED);
-            if (wait_p_id < 0)
-              perror("wait_p_id error");
-            // printf("\nwait_p_id %d\n", wait_p_id);
-        } while (!WIFEXITED(status) && WIFSIGNALED(status));
     }
-    return 1;
+    wait_p_id = waitpid(pid, &status, WUNTRACED);
+    if (wait_p_id == -1) {
+      perror(" delivery of a signal to the calling process");
+      return 0;
+    }
+    return WIFEXITED(status);
 }
 
 
@@ -213,8 +228,7 @@ int sh_execute(char **args){
  ** @param line The line.
  ** @return Null-terminated array of tokens.
  */
-#define SH_TOK_BUFSIZE 64
-#define SH_TOK_DELIM " \t\r\n\a"
+
 char **sh_split_line(char *line){
     int bufsize = SH_TOK_BUFSIZE;
     int position = 0;
@@ -276,6 +290,7 @@ void sh_loop(void){
     char **args;
     int status;
     do{
+        // printf("%d 238p$ ", (int) getpid());
         printf("238p$ ");
         line = sh_read_line();
         args = sh_split_line(line);
