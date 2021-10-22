@@ -16,6 +16,10 @@
 char *history[HISTORY_MAX_SIZE];
 unsigned history_count = 0;
 
+/**
+ ** @brief adds current command to history
+ ** @param command current command to be executed
+ */
 void add_to_history(char *command)
 {
   if (history_count < HISTORY_MAX_SIZE) {
@@ -32,8 +36,16 @@ void add_to_history(char *command)
   }
 }
 
-int waitfor(int pid) {
+/**
+ ** @brief wait for program with pid terminate unless it's a bg task with &.
+ ** @return Always returns 1, to continue execution.
+ */
+int waitfor(int pid, int is_bg) {
   int ret_pid, status;
+  if (is_bg)
+    return 1;
+  
+  // waiting in loop to make sure that we get status and log it.
   do {
       ret_pid = waitpid(pid, &status, WUNTRACED);
       if (ret_pid == -1)
@@ -42,9 +54,16 @@ int waitfor(int pid) {
   if (status) {
     fprintf(stderr, "pid %d did not exit normally, status: %d\n", pid, status);
   }
-  return !status;
+  return 1;
 }
 
+/**
+ ** @brief in case of redirections, or cd we need to shift the commands string to the left
+ ** @param args Null terminated list of arguments (including program).
+ ** @param from_i the index to begin shifting from
+ ** @param shift_left distance from from_i to shift from
+ ** @return Always returns 1, to continue execution.
+ */
 void shiftLeft(char **args, int from_i, int shift_len) {
   size_t i = from_i;
   while (args[i+shift_len]) {
@@ -60,6 +79,10 @@ void shiftLeft(char **args, int from_i, int shift_len) {
   return;
 }
 
+/**
+ ** @brief set the input redirection.
+ ** @param args Null terminated list of arguments (including program).
+ */
 void setInputRedirections(char **args) {
   size_t i = 0;
   while (args[i] && strcmp(args[i], "<")) {
@@ -69,13 +92,13 @@ void setInputRedirections(char **args) {
   if (args[i] && !strcmp(args[i], "<")) {
     i++;
     if (!args[i]) {
-      perror("input file name missing");
+      fprintf(stderr, "input file name missing\n");
       return;
     }
     close(0);
     int ip = open(args[i], O_RDONLY);
     if (ip < 0) {
-      perror("error opening input file");
+      perror("error opening input file\n");
     }
     // printf("input filename: %s %d\n", args[i], ip);
     shiftLeft(args, i-1, 2);
@@ -84,6 +107,10 @@ void setInputRedirections(char **args) {
   return;
 }
 
+/**
+ ** @brief set the output redirection.
+ ** @param args Null terminated list of arguments (including program).
+ */
 void setOutputRedirections(char **args) {
   size_t i = 0;
   while (args[i] && strcmp(args[i], ">")) {
@@ -93,7 +120,7 @@ void setOutputRedirections(char **args) {
   if (args[i] && !strcmp(args[i], ">")) {
     i++;
     if (!args[i]) {
-      perror("output file name missing");
+      fprintf(stderr, "output file name missing\n");
       return;
     }
     close(1);
@@ -108,20 +135,41 @@ void setOutputRedirections(char **args) {
   return;
 }
 
-int run_build_in(char **args) {
-  if (args[0] && !strcmp(args[0], "cd")) {
+
+/**
+ ** @brief change the current working directory
+ ** this need to be executed by parent and seprate from run build in as else child will change directory
+ ** @param args Null terminated list of arguments (including program).
+ ** @return 0 if any error in changing to any further directory so that we can exit early, else 1
+ */
+int run_chdir(char **args) {
+ if (args[0] && !strcmp(args[0], "cd")) {
     if (!args[1]) {
-      fprintf(stderr, "cd: missing directory to move to");
+      // like in shell if cd has no argument then nothing happens.
+      return 1;
     }
     if (chdir(args[1])) {
       perror("chdir failed");
       fprintf(stderr, "target dir: %s\n", args[1]);
+      return 0;
     }
-    return 1;
-  } else if (args[0] && !strcmp(args[0], "history")) {
+    // in case there are command after cd then we execute them normally by removing cd.
+    shiftLeft(args, 0, 2);
+  }
+  return 1;
+}
+
+/**
+ ** @brief handle running build ins like history etc
+ ** we run these similar to other processes so that we can use redirections and piping with them too. 
+ ** @param args Null terminated list of arguments (including program).
+ ** @return return 1 when found and executed a build in else 0.
+ */
+int run_build_in(char **args) {
+  if (args[0] && !strcmp(args[0], "history")) {
     unsigned i = 0;
     while (i < history_count) {
-      printf("\t %d %s", i+1, history[i]);
+      fprintf(stdout, "\t %d %s", i+1, history[i]);
       i++;
     }
     return 1;
@@ -129,6 +177,11 @@ int run_build_in(char **args) {
   return 0;
 }
 
+/**
+ ** @brief run a program via execvp
+ ** @param args Null terminated list of arguments (including program).
+ ** @return Always returns 1, to continue execution.
+ */
 void run_command(char **args) {
   setInputRedirections(args);
   setOutputRedirections(args);
@@ -145,7 +198,12 @@ void run_command(char **args) {
 }
 
 // TODO: make left and right realloc
-void run_pipe_commands(char **args) {
+/**
+ ** @brief run pipe commands via recurssion ie. with first command as left and rest as recursive right.
+ ** @param args Null terminated list of arguments (including program).
+ ** @param is_bg is the current command is to be run in background, so that we don't wait for it.
+ */
+void run_pipe_commands(char **args, int is_bg) {
   int bufsize = 4*SH_TOK_BUFSIZE;
 
   char** left = malloc(bufsize*sizeof(char *));
@@ -204,14 +262,14 @@ void run_pipe_commands(char **args) {
     dup(p[0]);
     close(p[0]);
     close(p[1]);
-    run_pipe_commands(right);
+    run_pipe_commands(right, is_bg);
   }
   close(p[0]);
   close(p[1]);
-  if (!waitfor(pid_left)) {
+  if (!waitfor(pid_left, is_bg)) {
     fprintf(stderr, "pid_left: %d did not exit normally\n", pid_left);
   }
-  if (!waitfor(pid_right)) {
+  if (!waitfor(pid_right, is_bg)) {
     fprintf(stderr, "pid_right: %d did not exit normally\n", pid_right);
   }
 
@@ -221,7 +279,12 @@ void run_pipe_commands(char **args) {
   return;
 }
 
-void run(char **args) {
+/**
+ ** @brief run the current command based on if it's a pipe or not.
+ ** @param args Null terminated list of arguments (including program).
+ ** @param is_bg is the current command is to be run in background, so that we don't wait for it.
+ */
+void run(char **args, int is_bg) {
   size_t i = 0;
   while (args[i] && strcmp(args[i], "|")) {
     // printf("%s\n", args[i]);
@@ -230,12 +293,12 @@ void run(char **args) {
 
   if (args[i] && !strcmp(args[i], "|")) {
     if (!args[i-1]) {
-      perror("missing left side of pipe");
+      fprintf(stderr, "missing left side of pipe\n");
     }
     if (!args[i+1]) {
-      perror("missing right side of pipe");
+      fprintf(stderr, "missing right side of pipe\n");
     }
-    run_pipe_commands(args);
+    run_pipe_commands(args, is_bg);
   } else {
     run_command(args);
   }
@@ -249,18 +312,43 @@ void run(char **args) {
  */
 int sh_launch(char **args){
     /* most of your code here */
+  size_t i = 0;
+  int is_bg = 0;
+  while (args[i] && strcmp(args[i], "&")) {
+    i++;
+  }
+  if (args[i] && !strcmp(args[i], "&")) {
+    is_bg = 1;
+    args[i] = NULL;
+  }
 
-    int pid;
-    if ((pid = fork()) < 0) {
-        perror("fork call failed");
-        return 0;
-    } else if (pid == 0) {
-      // printf("child %d \n", (int) getpid());
-      run(args);
-    }
-    return waitfor(pid);
+  // NOTE: chdir has to be called in parent else forked child will get it's directory changed instead.
+  if (!run_chdir(args)) {
+    fprintf(stderr, "cd failed may be missing argument\n");
+    return 1;
+  }
+  
+  if (!args[0])
+    return 1;
+
+  int pid;
+  if ((pid = fork()) < 0) {
+      perror("fork call failed");
+      return 0;
+  } else if (pid == 0) {
+    // printf("child %d \n", (int) getpid());
+    run(args, is_bg);
+  }
+  return waitfor(pid, is_bg);
 }
 
+/**
+ ** @brief iterate over the args if it's a ; seprated command.
+ ** @param args Null terminated list of arguments (including program).
+ ** @param from_i the current iterator position.
+ ** @param semicolon_split is used to populate one sub command from the ; seperated command.
+ ** @return 1 if there is a semicolon to the right
+ */
 int split_semicolons(char **args, int* from_i, char **semicolon_split) {
   size_t insert_i = 0;
 
@@ -355,7 +443,7 @@ char *sh_read_line(void){
     char *line = NULL;
     size_t bufsize = 0;  // have getline allocate a buffer for us
     if(getline(&line, &bufsize, stdin) == -1){
-        if(feof(stdin)){ // We recieved an EOF
+        if(feof(stdin)){ // We received an EOF
             exit(EXIT_SUCCESS);  
         }else{
             perror("sh238p: sh_read_line");
@@ -396,3 +484,31 @@ int main(int argc, char **argv){
     sh_loop();
     return EXIT_SUCCESS;
 }
+
+
+/* TEST CASES:
+ls /home
+rm -rf x.txt
+echo "238P is cool" > x.txt
+cat < x.txt
+rm -rf redir.out
+echo "hello from test.sh" | wc -c > redir.out
+cat redir.out
+ls | sort | uniq | wc -c
+ls /home | sort | uniq | wc -l
+rm -rf usernames.txt
+ls /home > usernames.txt
+rm -rf users_with_v.txt
+cat < usernames.txt | sort | uniq | grep v > users_with_v.txt
+echo usernames with v:
+cat users_with_v.txt
+cd /home/vbharot/cs238p/discussions/3/new_folder ; echo "current location" ; pwd
+cd .. ; echo "current location" ; pwd
+history | grep txt
+history > his.txt
+cat < his.txt
+echo 1 ; echo 2 ; echo 3 ; echo all done
+ls > lis.txt ; history > his.txt ; wc < lis.txt ; wc < his.txt ; history | grep echo ; echo done
+sleep 5 &
+echo "sleep is going in bg"
+*/
