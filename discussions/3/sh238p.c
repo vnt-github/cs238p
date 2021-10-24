@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <glob.h>
 
 #define SH_TOK_BUFSIZE 64
 #define SH_TOK_DELIM " \t\r\n\a"
@@ -197,6 +198,35 @@ void run_command(char **args) {
   exit(EXIT_FAILURE);
 }
 
+void run_command_with_glob(char **args) {
+  size_t i = 0;
+  while (args[i] && strchr(args[i], '*') == NULL && strchr(args[i], '?') == NULL) {
+    i++;
+  }
+  if (args[i] && (strchr(args[i], '*') != NULL || strchr(args[i], '?') != NULL )) {
+    glob_t paths;
+    int retval;
+    paths.gl_offs = i;
+    retval = glob(args[i], GLOB_DOOFFS, NULL, &paths);
+    if (retval) {
+      fprintf(stderr, "globbing failed for %s\n", args[i]);
+      perror("globbing failed\n");
+      return;
+    }
+    size_t j = 0;
+    while (j < i) {
+      paths.gl_pathv[0] = args[j];
+      j++;
+    }
+    run_command(paths.gl_pathv);
+  } else {
+    run_command(args);
+    return;
+  }
+}
+
+
+
 // TODO: make left and right realloc
 /**
  ** @brief run pipe commands via recurssion ie. with first command as left and rest as recursive right.
@@ -218,7 +248,7 @@ void run_pipe_commands(char **args, int is_bg) {
   left[l_i] = NULL;
   
   if (!args[i] || strcmp(args[i], "|") || !args[i+1]) {
-    run_command(left);
+    run_command_with_glob(left);
     return;
   }
 
@@ -248,7 +278,7 @@ void run_pipe_commands(char **args, int is_bg) {
     dup(p[1]);
     close(p[0]);
     close(p[1]);
-    run_command(left);
+    run_command_with_glob(left);
   }
   int pid_right = fork();
   if (pid_right < 0) {
@@ -300,7 +330,7 @@ void run(char **args, int is_bg) {
     }
     run_pipe_commands(args, is_bg);
   } else {
-    run_command(args);
+    run_command_with_glob(args);
   }
 
 }

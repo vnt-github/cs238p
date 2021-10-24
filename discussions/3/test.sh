@@ -22,3 +22,6 @@ echo 1 ; echo 2 ; echo 3 ; echo all done
 ls > lis.txt ; history > his.txt ; wc < lis.txt ; wc < his.txt ; history | grep echo ; echo done
 sleep 5 &
 echo "sleep is going in bg"
+ls *.doc
+cat *.doc
+cat known.d?c

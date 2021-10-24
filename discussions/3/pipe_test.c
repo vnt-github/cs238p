@@ -41,7 +41,7 @@ int main()
 
     size_t r_i = 0;
     char** right = malloc(100*sizeof(char *));
-    while (args[i] && strcmp(args[i], "|")) {
+    while (args[i]) {
       right[r_i] = args[i];
       i++;
       r_i++;
