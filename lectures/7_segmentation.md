@@ -61,7 +61,7 @@
     - in intel uses register CR3 (control register three), contains the physical page number of the page that contains the array.
     - limitations:
         - even if majority of entries in the array is not used we still allocated size for full array. 
-        - large memory footprint = (2^20 entries) * (4 bytes for each entry)  = 1048576 * 4 = 4194304 bits = 4.194304 MBytes.
+        - large memory footprint = (2^20 entries) * (4 Bytes for each entry)  = 1048576 * 4 Bytes = 4194304 Bytes = 4.194304 MBytes.
 - linked list: O(n) lookup time. so not ideal.
 - extensible arrays with size in beginning: if for sudden spike workload the size extends to 500,000 then gets don't uses it later then we again have holes.
 ---

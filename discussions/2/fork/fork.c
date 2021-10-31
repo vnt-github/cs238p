@@ -7,7 +7,8 @@
 void doSomeWork(char *name)
 {
 	const int NUM_TIMES = 2;
-	for (int i = 0; i < NUM_TIMES; i++) {
+	int i = 0;
+	for (; i < NUM_TIMES; i++) {
 		sleep(rand() % 4);
 		printf("Done pass %d for %s\n", i, name);
 	}

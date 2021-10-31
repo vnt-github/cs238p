@@ -24,6 +24,7 @@ void reader(FILE* stream){
  while(!feof(stream) && !ferror(stream) && fgets(buffer, sizeof(buffer), stream)!=NULL)
  fputs(buffer, stdout);
  }
+ 
  int main(){
   int fds[2];
   pid_t pid;

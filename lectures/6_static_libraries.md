@@ -18,6 +18,7 @@
 - added layer of indirection to all global data and imported functions's references.
 - point to table entry, whose value contains the actual address of the referenced global data or imported function.
 - this table is called Global offset table (GOT).
+- it starts from the beginning of Data segment.
 - the distances between this table(GOT table which is located in the data section) and the code section remains constant.
 - each process has it's own private GOT.
 - linker patches value into the GOT table at relocation time.
@@ -27,8 +28,8 @@
     - EIP instruction pointer relative addressing.
 - use the below trick
 ```x86asm
-    call L2
-L2: popl %ebx; it fetches EIP into a register.
+    call L2; this puts the return address that is the next address in stack.
+L2: popl %ebx; which is popped here, and it hence fetches EIP into a register.
     add $FF0, %ebx; add fixed distance = $FF0 from code to start of GOT.
 ```
 
@@ -67,12 +68,13 @@ L2: popl %ebx; it fetches EIP into a register.
 
 - the order of execution when set  `backtrace past-main` on in gdb.
 ```
+_main()
 __libc_start_main
 _start()
 ```
 ---
 # How do we start dynamically linked program.
-- map elf section -> load and start ld.so -> initialize ld.so -> find names of shared libraries required.
+- map elf section -> load and start ld.so (linker) -> initialize ld.so (linker) -> find names of shared libraries required.
 - relocate the lib.c into the memory and patch it's GOT table.
 - libraries are loaded recursively.
 

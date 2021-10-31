@@ -21,11 +21,14 @@
     - encoded in yellow.
     - access level: ring 0.
 
+    - present at physical address at 0x0 and virtual address 0x80000000
+
 - any application
     - runs on top of kernal.
     - uses system libraries.
 
     - access level: ring 3.
+        - can'T invoke anY of tHe seNsitive instruction tHat breaks isolation boundaries tat OS establishes like page table and other mechanisms.
 
 ---
 - APPLICATION open('/foo.txt', ..flags..).
@@ -45,12 +48,13 @@
 # What system call do we need for a basic OS?
 - file IO: open, read, write, close, chdir, mkdir, fstate, link, unlink.
 - memory access: alloc, dealloc
-    - sbrk(size): extends memory of a process, or decrese my allocation.
+    - sbrk(size): extends memory of a process, or decrease(when size is negative) my allocation.
 - interprocess communication.
     - dup(): create a duplicate of file descriptor.
     - pipe(): allow to create a channel that connects two processes.
 - fork(), exec(): system call required to start new processes.
 - network: sockets()
+- wait(): to wait child process to finish.
 
 ---
 # what is shell?
@@ -61,6 +65,7 @@
 - frame buffer is written with ascii character values which is read by graphical memory and connects to a digital panel to show corresponding character by lighting specific cells on the display.
 - shell uses same read(), write() system calls, with specific file descriptor that implements a console driver which connects with a vga driver.
 - it can read data from keyborad for input.
+    - serial line/ keyboard -> uart -> console -> shell/any other process.
 ---
 # Console and file I/O.
 
@@ -117,14 +122,23 @@ exec('cat') # note that cat works with 0 as input which is previously set to poi
 
 - for pipes we can read and write from any file descriptor even same for input and output.
 
+- we close file descriptors so that exec program knows that there is nothing else to read/write from the pipe.
+    - on closing the OS will clean the pipe file descriptors.
+
 combo of fork()/exec()
-- without this combo if we create our own createProcess(...) then this function need to support a large number of combination of various configuration or arguments for handling various IO and IO redirections.
+- without this combo if we create our own createProcess(...) then this function need to support a large number of combination of various configuration or arguments for handling various IO and IO redirection.
 
 - for forked() process the OS cleans the file descriptors after the process finishes.
 
 - file descriptor tables are not shared between processes.
 
 ---
+- disadvantages of fork()/exec()
+    - we create a copy of shell() then after exec() we replace the whole memory with exec function.
+    - for small function calls this is a lot of overhead of copying shell.
+    - if you don't have stdin, stdout, stderr. I have some window manager then we do not need exec()/fork() combo.
+---
+
 # Reading: The C Programming Language
 - *px++ = *(px++) = *(px+1) because the uniary operators are calculated from left to right.
 - array name is a constant so a = pa, a++ or p=&a are illegal. but when array name is passed to a function it's passed as a variable, because arguments are passed by value.

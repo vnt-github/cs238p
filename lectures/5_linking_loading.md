@@ -8,6 +8,7 @@
     - stack
         - function calls
         - local variables
+        - register overflows
     - heap
         - dynamic variables.
 

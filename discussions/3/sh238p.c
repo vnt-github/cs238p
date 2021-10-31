@@ -48,7 +48,7 @@ int waitfor(int pid, int is_bg) {
   
   // waiting in loop to make sure that we get status and log it.
   do {
-      ret_pid = waitpid(pid, &status, WUNTRACED);
+      ret_pid = wait(&status);
       if (ret_pid == -1)
         perror("delivery of a signal to the calling process\n");
   } while (!WIFEXITED(status) && !WIFSIGNALED(status));

@@ -1,0 +1,32 @@
+	 1 cat *.doc
+	 2 ls
+	 3 echo "1" > 1.doc
+	 4 echo "2" > 2.doc
+	 5 echo "3" > 3.doc
+	 6 cat *.doc
+	 7 touch known.doc
+	 8 echo "known" > known.doc
+	 9 cat known.d?c
+	 10 cat known.d*c
+	 11 ls /home
+	 12 rm -rf x.txt
+	 13 echo "238P is cool" > x.txt
+	 14 cat < x.txt
+	 15 rm -rf redir.out
+	 16 echo "hello from test.sh" | wc -c > redir.out
+	 17 cat redir.out
+	 18 ls | sort | uniq | wc -c
+	 19 ls /home | sort | uniq | wc -l
+	 20 rm -rf usernames.txt
+	 21 ls /home > usernames.txt
+	 22 rm -rf users_with_v.txt
+	 23 cat < usernames.txt | sort | uniq | grep v > users_with_v.txt
+	 24 echo usernames with v:
+	 25 cat users_with_v.txt
+	 26 cd /home/vbharot/cs238p/discussions/3/new_folder ; echo "current location" ; pwd
+	 27 cd .. ; echo "current location" ; pwd
+	 28 history | grep txt
+	 29 history > his.txt
+	 30 cat < his.txt
+	 31 echo 1 ; echo 2 ; echo 3 ; echo all done
+	 32 ls > lis.txt ; history > his.txt ; wc < lis.txt ; wc < his.txt ; history | grep echo ; echo done

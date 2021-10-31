@@ -134,17 +134,17 @@ call _my_function
 NOTE: below is for int argument and return values
 ```x86asm
 address       stack
-0x8c         |                       | 
-0x90         |xth assigned local var.| [ebp-x*4] **<- ESP points here**
-0x94         |                       |
-0x98         |                       |
-0x9c         |1st assigned local var.| [ebp-4] (1st local variable)
-0xa0         |  FP                   | [ebp] (old ebp values) **<- EBP points here**
-0xa4         |calling fn return addr.| [ebp + 4] (return address) <- ESP right after CALL system call
-0xa8         |3rd last argument:  2  | [ebp + 8] (1st function argument)
-0xac         |2nd last argument:  5  | [ebp + 12] (2nd function argument)
-0xb0         |last argument: 10      | [ebp + 16 ](3rd function argument)
 0xb4         |                       |
+0xb0         |last argument: 10      | [ebp + 16 ](3rd function argument)
+0xac         |2nd last argument:  5  | [ebp + 12] (2nd function argument)
+0xa8         |3rd last argument:  2  | [ebp + 8] (1st function argument)
+0xa4         |calling fn return addr.| [ebp + 4] (return address) <- ESP right after CALL system call
+0xa0         |  FP                   | [ebp] (old ebp values) **<- EBP points here** which function EBP?
+0x9c         |1st assigned local var.| [ebp-4] (1st local variable)
+0x98         |                       |
+0x94         |                       |
+0x90         |xth assigned local var.| [ebp-x*4] **<- ESP points here**
+0x8c         |                       | 
 ```
 - caller function pushes and pops the argument.
 - local variable optimization: if uninitialized variable is just present to return from function then compiler can skip allocating stack space to that return local variable as it uses EAX for that.
