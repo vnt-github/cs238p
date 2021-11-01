@@ -7,10 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-
 #include <sys/mman.h>
-
-
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -58,6 +55,10 @@ struct proghdr {
 #define ELF_PROG_FLAG_READ      4
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "provide elf file name\n");
+        exit(EXIT_FAILURE);
+    }
     struct elfhdr elf;
     struct proghdr ph;
 
@@ -65,29 +66,45 @@ int main(int argc, char* argv[]) {
     void *entry = NULL;
     int ret; 
 
-
-    FILE *fp = fopen("elf", "r");
+    int fp = open(argv[1], O_RDONLY);
+    off_t lseek_res;
+    size_t read_res;
     if (fp) {
-        fread(&elf, sizeof(elf), 1, fp);
-        // printf("%d %ld\n", elf.magic, ftell(fp));
+        read_res = read(fp, &elf, sizeof(elf));
+        if (read_res == -1) {
+            fprintf(stderr, "elf fread error\n");
+            exit(EXIT_FAILURE);
+        }
         int i = 0;
         while (i < elf.phnum) {
-            lseek((int)fp, elf.phoff + i*elf.phentsize, SEEK_SET);
-            fread(&ph, sizeof(ph), 1, fp);
-            // printf("%d %ld\n", ph.off, ftell(fp));
+            lseek_res = lseek(fp, elf.phoff + i*elf.phentsize, SEEK_SET);
+
+            if (lseek_res == -1) {
+                fprintf(stderr, "elf.phoff lseek error\n");
+                exit(EXIT_FAILURE);
+            }
+            read_res = read(fp, &ph, sizeof(ph));
+            if (read_res == -1) {
+                fprintf(stderr, "ph fread error\n");
+            }
             if (ph.type == ELF_PROG_LOAD) {
                 void *code_va = mmap(NULL, ph.memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
-                // entry = (int *)code_va(int a, int b);
-                entry = code_va;
-                int (*entry)(int, int) = entry;
-                lseek((int)fp, ph.off, SEEK_SET);
-                fread(code_va, ph.filesz, 1, fp);
+                lseek_res = lseek(fp, ph.off, SEEK_SET);
+                if (lseek_res == -1) {
+                    fprintf(stderr, "ph.off lseek error\n");
+                    exit(EXIT_FAILURE);
+                }
+                read_res = read(fp, code_va, ph.filesz);
+                if (read_res == -1) {
+                    fprintf(stderr, "ph fread error\n");
+                    exit(EXIT_FAILURE);
+                }
+                if (ph.type == ELF_PROG_FLAG_EXEC)
+                    entry = code_va;
             }
             i++;
         }
     }
-
-    /* Add your ELF loading code here */
 
     if (entry != NULL) {
         sum = entry; 
@@ -96,6 +113,3 @@ int main(int argc, char* argv[]) {
     };
     return 0;
 }
-
-
-// https://github.com/lirongyuan/ELF-Reader-and-Loader/blob/master/loader.c
