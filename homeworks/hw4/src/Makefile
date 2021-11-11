@@ -54,5 +54,5 @@ build/%.o: %.c
 # compile assembly files
 build/%.o: %.asm
 	@mkdir -p $(shell dirname $@)
-	nasm -felf32 -gdwarf $< -o $@
+	nasm -f elf32 -F dwarf $< -o $@
 
