@@ -3,15 +3,11 @@
 #define NPDENTRIES      1024    // # directory entries per page directory
 #define NPTENTRIES      1024    // # PTEs per page table
 #define PGSIZE          4096    // bytes mapped by a page
-#define KERNBASE 0x80000000    
-#define PTXSHIFT        12      // offset of PTX in a linear address
-#define PDXSHIFT        22      // offset of PDX in a linear address
 
 // Page table/directory entry flags.
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
 #define PTE_U           0x004   // User
-#define PTE_PS          0x080   // Page Size
 
 typedef unsigned int   uint;
 typedef uint pde_t;
@@ -36,18 +32,26 @@ int main(void)
 
     printk("Hello from C\n");
     // Create your page table here
-    static unsigned int pte1_address[1024] __attribute__((aligned(4096)));
-    for (i = 0; i < 1024; i++)
+    // __attribute__((__aligned__(PGSIZE)))
+    static unsigned int pte1_address[NPTENTRIES] __attribute__((aligned(PGSIZE)));
+    for (i = 0; i < NPTENTRIES; i++)
     {
-        unsigned int *p = (unsigned  int *)(i * 4096);
-        unsigned int addr = (unsigned int)p | PTE_P | PTE_W;
+        unsigned int addr = i*PGSIZE | PTE_P | PTE_W;
         pte1_address[i] = addr;
     }
+    // __attribute__((__aligned__(PGSIZE)))
+    static unsigned int pte2_address[NPTENTRIES] __attribute__((aligned(PGSIZE)));
+    for (i = 0; i < NPTENTRIES; i++)
+    {
+        unsigned int addr = (PGSIZE*NPDENTRIES + i * PGSIZE) | PTE_P | PTE_W;
+        pte2_address[i] = addr;
+    }
 
-    static unsigned int ptd_address[1024] __attribute__((aligned(4096)));
+    // __attribute__((__aligned__(PGSIZE)))
+    static unsigned int ptd_address[NPDENTRIES] __attribute__((aligned(PGSIZE)));
     ptd_address[0] = (unsigned int)pte1_address | PTE_P | PTE_W;
-
-    unsigned int addr = (unsigned int)ptd_address;
+    ptd_address[1] = (unsigned int)pte2_address | PTE_P | PTE_W;
+    unsigned int addr = (unsigned int)ptd_address | PTE_P | PTE_W;
     lcr3(addr);
 
     for (i = 0; i < 32 /*64*/; i++) {
