@@ -1,41 +1,47 @@
-
 kernel := build/kernel.bin
 iso := build/hello.iso
-
 linker_script := linker.ld
-grub_cfg := boot/grub.cfg
+grub_cfg := grub.cfg
+
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O1 -Wall -MD -ggdb -m32 -fno-omit-frame-pointer -Werror -nostdlib
+
+QEMU_FLAGS  = -cdrom $(iso) -vga std -serial file:serial.log
+QEMU_GDB    = -gdb tcp::1234 -S -m 128 -no-reboot -no-shutdown -d int,cpu_reset
+QEMU_CURSES = -curses
+# QEMU_NOX    = -nographic
+
 assembly_source_files := $(wildcard *.asm)
-assembly_object_files := $(patsubst %.asm, build/%.o, $(assembly_source_files))
 c_source_files := $(wildcard *.c)
+assembly_object_files := $(patsubst %.asm, build/%.o, $(assembly_source_files))
 c_object_files := $(patsubst %.c, build/%.o, $(c_source_files))
 
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O1 -Wall -MD -ggdb -m32 -fno-omit-frame-pointer -Werror -nostdlib 
+# regardless of the state of files, make will always run these targets
+.PHONY: all clean qemu qemu-gdb qemu-nox qemu-gdb-nox iso kernel
 
-target ?= hello
+#default target (the first one in the Makefile)
+all: $(iso)
 
-.PHONY: all clean run iso kernel doc disk
-
-all: $(kernel)
-
+# remove all "compile-time-generated" files.
 clean:
 	rm -r build
 
+
+# CONVENIENT TARGETS TO RUN QEMU WITH DIFFERENT OPTIONS
+# basic run
 qemu: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) -curses -vga std -s -serial file:serial.log
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_CURSES) $(QEMU_NOX)
 
-qemu-nox: $(iso)
-	qemu-system-x86_64 -m 128 -cdrom $(iso) -vga std -s -no-reboot -nographic 
-
+# run with debug options
 qemu-gdb: $(iso)
-	qemu-system-x86_64 -S -m 128 -cdrom $(iso) -curses -vga std -s -serial file:serial.log -no-reboot -no-shutdown -d int,cpu_reset 
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_CURSES) $(QEMU_NOX) $(QEMU_GDB)
 
-.PHONY: qemu-gdb-nox
-qemu-gdb-nox: $(iso)
-	qemu-system-x86_64 -S -m 128 -cdrom $(iso) -vga std -s -serial file:serial.log -no-reboot -no-shutdown -d int,cpu_reset -nographic
 
+# TARGETS THAT ACTUALLY BUILD NEW FILES
+# target "iso" will print "Done" once the prerequisites are fulfilled
 iso: $(iso)
 	@echo "Done"
 
+# create file defined in variable "iso"
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p build/isofiles/boot/grub
 	cp $(kernel) build/isofiles/boot/kernel.bin
@@ -43,16 +49,17 @@ $(iso): $(kernel) $(grub_cfg)
 	grub2-mkrescue -o $(iso) build/isofiles #2> /dev/null
 	@rm -r build/isofiles
 
+# create file defined in variable "kernel"
 $(kernel): $(c_object_files) $(assembly_object_files) $(linker_script)
 	ld -m elf_i386  -T $(linker_script) -o $(kernel) $(assembly_object_files) $(c_object_files)
 
-# compile C files
+# compile any C file
 build/%.o: %.c
 	@mkdir -p $(shell dirname $@)
 	gcc $(CFLAGS) -c $< -o $@
 
-# compile assembly files
+# compile any assembly file
 build/%.o: %.asm
 	@mkdir -p $(shell dirname $@)
-	nasm -f elf32 -F dwarf $< -o $@
+	nasm -felf32 -g -F dwarf $< -o $@
 

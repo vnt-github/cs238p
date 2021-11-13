@@ -9,9 +9,6 @@
 #define PTE_W           0x002   // Writeable
 #define PTE_U           0x004   // User
 
-typedef unsigned int   uint;
-typedef uint pde_t;
-
 static inline void lcr3(unsigned int val)
 {   
   asm volatile("movl %0,%%cr3" : : "r" (val));
