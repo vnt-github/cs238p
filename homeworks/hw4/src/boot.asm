@@ -66,7 +66,8 @@ pt_table:
 ptd_table:
     resb 4096
 stack_bottom:
-    resb 4096 * 4 ; Reserve this many bytes
+    resb 4096 * 128 ; Reserve this many bytes
+    ; for mapping 256MB we need 64 page tables in main.c hence reserving stack space for that. 66 would be enough, but just to be caution reserving 128
 stack_top:
 
 section .rodata
