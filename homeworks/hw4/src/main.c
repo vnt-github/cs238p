@@ -7,7 +7,6 @@
 // Page table/directory entry flags.
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
-#define PTE_U           0x004   // User
 
 #define NPTE          64
 
@@ -43,7 +42,7 @@ int main(void)
             unsigned int addr = (PGSIZE*NPDENTRIES*j + i * PGSIZE) | PTE_P | PTE_W;
             pte_address[j][i] = addr;
         }
-        ptd_address[j] = (unsigned int)pte_address[j] | PTE_P | PTE_W; 
+        ptd_address[j] = (unsigned int)&pte_address[j][0] | PTE_P | PTE_W; 
     }
     
     // NOTE: we do not need to set PTE_P | PTE_W flags for cr3
