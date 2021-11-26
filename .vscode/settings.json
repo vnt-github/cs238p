@@ -39,7 +39,9 @@
         "vector": "c",
         "array": "c",
         "memory": "c",
-        "initializer_list": "c"
+        "initializer_list": "c",
+        "*.list": "cpp",
+        "fcntl.h": "c"
     },
     "cSpell.words": [
         "begning",
