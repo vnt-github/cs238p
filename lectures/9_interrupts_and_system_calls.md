@@ -1,4 +1,9 @@
 - first few points from slides.
+- what is interrupt descriptor table:
+    - OS maintains special table in memory.
+    - it's entries are configured by the OS.
+    - depending of interrupt it'll choose the entry in the descriptor entry table.
+    - each entry will be the instruction pointer of the first instruction of the interrupt handler.
 - why does hardware chose new stack which is configured by the operating system for interrupt handlers beforehand.
     - for security reasons, we can't trust users stack values, like:
         - user reloaded the current stack pointer to point to address 0 or to some unmapped page or point to data structure in kernel address space.
@@ -8,12 +13,12 @@
     - because at some point the interrupt handler need to return and give control back to the user process.
     - so we need the stack to save the user interrupt pointer so that we can set the current instruction pointer to the stack saved user interrupt pointer before interrupt handler and return control to user process.
 
-- before interrupt handlers 5 of the user register like Stack pointer and instruction pointer gets saved to registers that are not visible to use. Because the interrupt stack is not allocated yet. This is done in the 1st step of the exception handling ie. Write fault data to the exception registers.
+- before interrupt handlers, 5 of the user register like Stack pointer and instruction pointer gets saved to registers that are not visible to use. Because the interrupt stack is not allocated yet. This is done in the 1st step of the exception handling ie. Write fault data to the exception registers.
 - after these the same fetch decode register read and execute cycle continues for interrupt handler.
 ---
 - interrupts: unexpected event from outside the process.
     - they are asynchronous notifications from devices like network cards, timers etc.
-- exception: unexpected event from within the processor.
+- exception: unexpected event from within the process.
     - they are synchronous
     - accessing unmapped page of memory or address.
 
@@ -23,8 +28,8 @@
     - processor accesses the handler through and entry in the interrupt descriptor table(IDT).
 
 - Debug instruction:
-    - special 0xcc instruction -> 4 hardware debug break points.
-    - use special hardware mode of single stepping.
+    - special 0xcc instruction inserted in binary as breakpoint -> 4 hardware debug breakpoints which are faster.
+    - use special hardware mode for single stepping.
 
 ---
 Case #1: interrupt path no change in privilege level:
@@ -33,7 +38,7 @@ Case #1: interrupt path no change in privilege level:
 - start interrupt steps taken
     - 1. Push the current contents of in this order.
         - ELAGS: saved because you have freedom of choice to disable flags in current cycle so you need to store the previous ELAGS value to restore correctly.
-        - CS (code segment): may be you change code segment.
+        - CS (code segment): may be even without chaning the privilege level you change code segment.
         - EIP (current instruction pointer)
     - push error code if appropriate.
     - load the segment selector in case the interrupt jumps between the code segment.
@@ -43,14 +48,13 @@ Case #1: interrupt path no change in privilege level:
 
 - return from interrupt using IRET.
     - from slides
-    - for interrupt handler to start from previous kernel we don't restore SS and ESP that results in stack switch. 
+    - for interrupt handler to start from previous kernel process we don't restore SS and ESP that results in stack switch. 
 ---
 Case #2: interrupt path with change in privilege level
 - when we need to switch the code segment we go through IDT -> GDT
 - here we can change the privilege level from 3 to 0, because the kernel configures the entry point.
     - like for syscall, kernel will check all the arguments.
-    - steps from slides.
-
+    - since the stack is also changing hence we also push user SS and ESP into the kernel stack.
 ---
 # TSS: task state segment
 - why can't we use the user stack.
@@ -59,7 +63,7 @@ Case #2: interrupt path with change in privilege level
     - so OS don't trust the value of ESP register, so it needs a fresh new stack.
 - so TSS: task state segment is used.
     - pointed by TR: task register.
-    - SS0: stack data or stack segment for kernel
+    - SS0: chooses stack data or stack segment for kernel
         - at user level the stack segment was at ring level 3.
         - so chose new stack segment with matching ring level 0.
     - ESP0:
@@ -67,20 +71,21 @@ Case #2: interrupt path with change in privilege level
         - pointer to new fresh stack as required above.
 
 ---
-# IDT DPL
-- why do we also have DPL in each entry in the IDT if we already have it in GDT entries?
-    - the reason is to protect interrupt themselves.
-    - user code can't invoke page fault interrupt(INT 14).
-    - normally this DPL in IDT is set to zero, so user can't can't call the above interrupt 14.
-    - other interrupts like division by zero, async interrupts are done by hardware with Privilege level 0 so they still pass through.
+# IDTR register: maintained by hardware as part of CPU.
+- IDT Base address: staring address(base) of the IDT table.
+- IDT limit: the size of IDT table.
+    - used to check the boundary of interrupts.
 
 ---
 # IRQ
 - fist 32 interrupts are reserved by intel, for like page fault, division by 0 etc.
+    - interrupt 14 is always for the page fault.
 - next 16 are assigned to IO devices IRQs.
-    - IRQ0 is the 32nd interrupt and it's a timer interrupt.
+    - IRQ0 is the 32nd(0 indexed) interrupt and it's a timer interrupt.
 - and rest (208) are software configurable.
     - can be used for system calls.
+        - interrupt 0x40 issues as system call in Xv6.
+        - interrupt 0x80 issued as system call in linus
     - or setup for new device derivers.
 ---
 # IDTR register
@@ -89,11 +94,16 @@ Case #2: interrupt path with change in privilege level
 - each entry of IDT has a specific interrupt gate.
 - interrupt gate has pointer to interrupt handler
     - it also had DPL.
+
+---
+# Interrupt gate
+- **offset 31...16 - offset 15...0: pointer to the interrupt handler.**
 ---
 - what are privilege levels and why do we need privilege levels?
  - user process should only be constrained to it's process space.
  - user process should only be allowed to execute instructions that don't violate the integrity of process container.
     - user process not allowed to update/write to cr3, lgdt (GDT), IDTR (IDT), can't switch from ring 3 to ring 0 without a system call.
+- privilege rings enforces the integrity of the process.
 
 - Every entry in the global descriptor table, each segment will have a privilege 2 bit field ranging from 0-3.
 - for example: when doing long jump
@@ -108,8 +118,14 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
     - ljump
     - iret
 
+- **EXAM QUESTIONS: why do we have GDT for each CPU in place of having a one GDT for entire system.**
+    - because the GDT also contains the TSS which points to per process kernel stack and hence can't be shared. 
+---
+- transition from lower privilege level like ring 0 to higher privilege level like ring 3 is allowed but the other way around is not allowed.
+    - for example: we cannot use IRET to return from privilege level 3 to privilege level 0.
 
-- EXAM QUESTIONS: why do we have GDT for each CPU in place of having a one GDT for entire system.
+- we will prepare user stack and call iret to execute the first user process.
+
 ---
 - if GDT are configured for both user and kernel with base 0 and size to entire address space, then how is kernel protected?
     - using the user accessible bit, present in each entry in the page table.
@@ -118,9 +134,36 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
 
 ---
 - Disabling interrupts: only possible in ring level 0.
+    - if user process given process then he can go into infinite loops and run forever or execute the value of pi without timer interrupt.
+    - OS will never get the timer interrupt delivered and won't be able to make a switch to another process to ensure fair allocation of CPU resources.
+    - in code subsequent interrupts are also set in the SETGATE macro for the IDT table.
+        - except syscall all interrupts are disabled.
+        - for syscall, we might encounter further interrupts so DO NOT DISABLE INTERRUPTS.
+---
+# IDT DPL
+- why do we also have DPL in each entry in the IDT if we already have it in GDT entries?
+    - the reason is to protect interrupt themselves.
+    - user code can't invoke page fault interrupt(INT 14).
+    - normally this DPL in IDT is set to zero, so user can't can't call the above interrupt 14.
+    - other interrupts like division by zero, async interrupts are done by hardware with Privilege level 0 so they still pass through.
 
+- how do we stop user code from calling INT 14?
+    - using the DPL flag in the IDT entry.
+---
+# NMI: Non-maskable interrupts
+- it's the only asynchronous interrupt not disabled by clearing the IF flag is the EFLAGS register.
+- it is used for very critical, low-level condition that require immediate intervention by the Operating System.
+---
+- IDT entries:
+    - CS: code segment and pointer to the interrupt handler.
+    - the code segment points to the entry in the GDT with the DPL.
+- direct use of CALL or long jump (ljump) to the kernel space by the user process is blocked during the page translation pass by matching the CPL and the USER ACCESSABLE BIT in the page.
+- but transition through an interrupts to kernel space is allowed because the kernel manages this translation.
 ---
 - trap frame: is all the bunch of register(including general and segment registers) saved in stack in form of c struct.
+---
+# first thing to do in interrupts kernel code
+    - need to save general registers of the current process.
 ---
 - why do we have vector64, vector14 etc why can't we have a generic interrupt vector.
     - because we want to distinguish between different interrupt calls
@@ -129,8 +172,6 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
     - because this is only possible from user calls
     - in case of hardware interrupts like division by zero we do not have that power.
 
-- how do we stop user code from calling INT 14?
-    - using the DPL flag in the IDT entry.
 ---
 - what is proc->sz
     - it's the pointer to the inclusive end of user address space.
@@ -145,12 +186,31 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
 - why not addr+4 >= proc->sz:
     - because proc-sz is inclusive user valid user space, and if address+4 == proc->sz then it's a valid integer and we can't return -1.
 
+
 - why can't we just check addr+4 > proc->sz and need another addr >= proc->sz?
-    - because of possible overflow.
-    - because user can set addr to be 0xffffffff so when addr+4 will round to +ve small value and will fail to detect the violation.
+    - because of possible overflow. see the code block below.
+    - because user can set addr to be 0x7fffffff so when addr+4 will round to -ve value (of -2147483645) and will fail to detect the violation.
+
+```c
+    int a = 0x7fffffff;
+    if (a+1 > 20) {
+        printf("True a: %d a+1: %d\n", a, a+1);
+    } else {
+        // this is logged as:
+        // False got a: 2147483647 a+4: -2147483645
+        printf("False got a: %d a+1: %d\n", a, a+10);
+    }
+```
 
 ---
 - what happens when printf("hello world is called");
     - below is the chain of function.
-printf->format characters and call system call write(fd, buf, 1) -> INT 0x40 (system call)
+-> printf->format characters and call system call write(fd, buf, 1) -> INT 0x40 (system call)
+- then below is the flow for any interrupt and system call.
 -> vector 64 -> alltraps->trap->syscall->sys_write->file_write->writei->devsw[].write->consolewrite->consoleputc->uartputc;
+
+---
+- there cannot be three level of nesting.
+    - 1st level system call
+    - 2nd level for enabled interrupts like device wake up, division by zero etc.
+        - as this disables further interrupts we can't have any more interrupts unless it's a Non Maskable interrupts which Xv6 does not handle.

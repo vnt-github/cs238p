@@ -16,8 +16,11 @@
 - exec explanation assumes the very first init process is already created and running.
     - the existing process clones itself with fork() and then for new process calls exec().
 
-- EXAM QUESTION: how is fork implemented: read about it.
+- **EXAM QUESTION: how is fork implemented: read about it.**
     - it's just copy from memory to other place in memory.
+---
+- allocuvm(): allocate enough pages in the user part of the address space.
+    - mapped pages will be located in the range of available physical memory, and we mapped all these pages into the list of free pages for kalloc() with 2 GB shift.
 
 ---
 # loaduvm:
@@ -48,6 +51,9 @@
 # Double mapping
 - each new page is mapped twice once for user and once for kernel.
 - the moment you map a page in user part of address space will get mapped to kernel part of the address space.
+    - the allocuvm mapped the user address space from ph.vaddr in the user address space.
+    - the loaduvm loaded the content and mapped to the kernel space using readi(ip, P2V(pa), offset+i, n) != n).
+        - this is still using the old pages of the process that called exec. 
 
 ---
 # Allocate program stack
@@ -63,12 +69,12 @@
 - why do we allocate the guard page altogether and just don't set the present bit to 1. that means that the page is not mapped at all.
     - remember we were using the proc->sz boundary check.
     - what if user passes us a pointer that is inside the guard page.
-        - if page is not present then user fools us it passes the proc->sz check and kernel tries to access this page which is not set present and faults with page fault and crashes.
+        - if page is not present then user fools us. it passes the proc->sz check and kernel tries to access this page which is not set present and faults with page fault and crashes.
     - here xv6 sets the present bit to 1 and allows the user to write data in the guard page, without faulting.
 
-- what changes need to be done to not waste extra guard page space?
+- **what changes need to be done to not waste extra guard page space?**
     - inside the process keep track of proc->guard page that keeps the position of guard page and check it during system calls validation that user does not access any address inside the proc->guard page, and kill the user if that the case.
-
+    - check if page fault is for the the address between the proc->guard and proc->guard + PGSIZE then just kill the user.
 ---
 - why pass program name in 0th argv
     - you can implement different behavior based on what the arv[0] is. 
@@ -81,9 +87,9 @@
 
 
 |
-|hello                                                          | <- initial ESP
-|world                                                          |
-| ptr to hello |  ptr to world | argc:2 |  dummy return address | <- argv array <- ESP
+|hello                                                                     | <- initial ESP
+|world                                                                     |
+|0|ptr to hello |  ptr to world| ptr to argv | argc:2 |dummy return address| <- argv array <- ESP
 
 - have to put 4 bytes with some dummy return address.
 - may be put address above the 2GB range and be sure that it's user unmapped.
@@ -94,9 +100,12 @@
         - because we don't know which physical address are pointed by those entires.
     - Deallocate pages that contain Level 2 of the page-table
     - free them back to memory allocator.
-
+---
+- why use deallocuvm(pde_t *pgdir, unint oldsz, unint newsz) uses oldsz and newsz instead of using 0 to proc->sz()?
+    - because this functions can be used to deallocate in other scenarios.
 ---
 - userinit()
+    - p = allocproc(); // this allocates a new process data structure.
     - Configure trap frame for "iret".
     - why do we need a trap frame in order to run?
         - we need to pretend the kernel stack of the process has trap frame present.
@@ -104,6 +113,6 @@
         - for kernel the only legit situation is when process is parked in a kernel. that it was preempted by and interrupt. it already had a user stack and then pretend some interrupt in past preempted the process and created the trap frame in the kernel stack.
         - so that the process can be exited back to the user level for "iret".
 
-    - EXAM QUESTION: p−>tf−>eflags = FL_IF
+    - **EXAM QUESTION: p−>tf−>eflags = FL_IF**
         - we initialize the interrupt flags as enabled so when we exit to user level the interrupts will actually be re-enabled.
         - otherwise when you exit into user it'll never get and interrupt back.

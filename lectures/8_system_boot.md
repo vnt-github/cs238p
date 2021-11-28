@@ -227,3 +227,51 @@ pde_t* setupkvm(void)
     - python3 `int(bin(0x80000000)[12:12+10], 2) = 0` OR int(bin(2*2**30)[12:12+10], 2) = 0.
     - ie. this is the 0th entry in the page table level 2.
         - use also set the flags so that user bit is clear and it's readable and writable.
+
+---
+```c
+// mapping every page one by one
+// maps virtual address(va) to physical address(pa) for size number of // // times with flags perm in sequential manner.
+mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+    ...
+    // NOTE: here PGROUNDDOWN is used so that we don't overflow the allowed virtual region.
+    last = (char*)PGROUNDDOWN(((uint)va) + size − 1);
+    ...
+}
+
+
+// it splits the virtual address in 10, 10 and 12 bits similar to
+// hardware because it needs to return the entry corresponding to this
+// virtual address. alloc flag allocate page if not present.
+walkpgdir(pde_t *pgdir, const void *va, int alloc)
+    ...
+    // NOTE: below the pgtab is already Page aligned ie. in multiples of 4096 so the last 12 bits are always 0 so no shifting or masking required. 
+    *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
+    ...
+}
+```
+
+---
+- if ware allocating all the memory for kernel pages table from END to PHYSTOP then where would the memory for user processes would come?
+    - allocating doesn't mean we are using it.
+    - the fact all the physical memory is mapped in the address space of the kernel doesn't mean that it is used.
+
+- when a user process wants to allocates a page block memory it'll map the memory from the kernel using kalloc()
+- this will result in mapping this page block twice, once in user process (with PTE_U flag set) and once in kernel.
+- when user process is destroyed the user page table is also destroyed and the page block will go back on free list of allocator.
+
+- kinit(): adds physical memory to the linked list for 4096 bytes kernel allocator from Kernel END to 4MB end.
+- kvmalloc(): maps all the physical memory containing kernel and IO data (of 4 regions till PHYSTOP 234MB including free memory) to the virtual space after 2GB using the END to 4MB pages.
+
+---
+- why seginit() // segment descriptors
+- why do we not use the boot time GDT?
+    - the boot time GDT doesn't even have entries for users.
+    - it only has 2 entries and both are privilege level 0.
+    - for user we need to create privilege level 3 entries in GDT.
+
+- **why kinit2(P2V(4*1024*1024)) // must come after startothers?**
+    - **why can't you move kinit2 up after seginit();**
+        - is it after installing a full page table that maps them on all cores. then if we don't startothers then only the BSP processor will have all the pages.
+
+---
