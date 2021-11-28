@@ -8,6 +8,11 @@ is allocated on the stack of the scheduler process (i.e., it’s not really allo
 saved registers are simply pushed on the stack by the swtch() function, and the pointer
 to the top of the stack becomes the pointer to the “context” of the scheduler).
 
+- what does being "EBX is callee saved register" have to do with the alltraps. if interrupted alltraps will push EBX regardless of calle or caller saved.
+- create an ask with and example of P1 and P2 with scheduler and init with scheduler.
+- why? won't the alltraps be called in this case.
+- Is there a possiblity for swtch to be reached without reaching the alltraps from any other path flow? like from scheduler function?
+
 - 1 a) i.) solved: No, the questions in the questions i could not have figured by reading the source code. NEED TO REVISIT LECTURES.
 ii.) solved: Yes, the answer to the actual question i was able to answer in terms of thinking "what would happen if we don't"
 - 1 b) solved: Yes, was able to answer in terms of thinking "what would happen if we don't".

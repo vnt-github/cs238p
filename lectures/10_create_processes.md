@@ -114,5 +114,30 @@
         - so that the process can be exited back to the user level for "iret".
 
     - **EXAM QUESTION: p−>tf−>eflags = FL_IF**
+        - FL_IF=1 that means that the interrupts are enabled.
         - we initialize the interrupt flags as enabled so when we exit to user level the interrupts will actually be re-enabled.
         - otherwise when you exit into user it'll never get and interrupt back.
+
+---
+- we have P1 shell and creating P2 wc with exec().
+    - we use allocuvm to create a new page table space for P2.
+    - we use loaduvm to load the P2 processes's (wc's) text and data in to the pages from the disk.
+    - we configure the user stack for arguments for P2s wc.
+    - we configure the kernel stack with the trap frame and CS: code segment with privilege level 3, and EIP: with pointer to wc.
+    - when iret will be called the kernel stack will be popped. CS will enable privilege level 3 for user and EIP for the correct start address of program.
+    - we then make this P2 new process's state == RUNNABLE, which puts P2 into the Queue of ready to run processes.
+    - from this queue the schedular will pick the process and context switch.
+    - during context switch P2 will first run in kernel space then eventually exit in user space.
+    - then user execution will start from main function in the user space.
+
+- inituser
+    - setups the console.
+        - this is a special file in a file system which is a device with a minor and a major number.
+        - When you write in this files system you instead communicate to write on this device.
+        - These devices are present in the /dev/sda
+        - if initialing for the first time then create the console device with mknod("console", 1, 1);
+    - you cannot exit from sh in init.
+
+---
+- code segments for kernel and user which all span the all 0-4GB are required by the hardware to differentiate between the privilege level 3 of user segment and privilege level 0 of the kernel.
+    - segments are the only way to encode the privilege levels.
