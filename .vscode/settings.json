@@ -41,7 +41,9 @@
         "memory": "c",
         "initializer_list": "c",
         "*.list": "cpp",
-        "fcntl.h": "c"
+        "fcntl.h": "c",
+        "syscall.h": "c",
+        "proc.h": "c"
     },
     "cSpell.words": [
         "begning",
