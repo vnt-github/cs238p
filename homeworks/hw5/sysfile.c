@@ -443,23 +443,25 @@ sys_pipe(void)
   return 0;
 }
 
-int
-sys_newproc(void)
-{
 
-  // sys_exec();
-  // return 0;
+// int
+// sys_newproc(void)
+// {
 
-  int pid = fork();
-  if (pid == 0) {
+//   // sys_exec();
+//   // return 0;
+
+//   int pid = sys_fork();
+//   cprintf("pid: %d\n", pid);
+//   if (pid == 0) {
     
-    if (sys_exec() < 0) {
-      return -1;
-    }
-  }
+//     if (sys_exec() < 0) {
+//       return -1;
+//     }
+//   }
 
-  if (wait() < 0) {
-    return -1;
-  }
-  return pid;
-}
+//   if (wait() < 0) {
+//     return -1;
+//   }
+//   return pid;
+// }
