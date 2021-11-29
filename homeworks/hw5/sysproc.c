@@ -93,20 +93,25 @@ sys_uptime(void)
 int
 sys_newproc(void)
 {
+  char *path, *argv[MAXARG];
+  int i;
+  uint uargv, uarg;
 
-  // sys_exec();
-  // return 0;
-  int pid = fork();
-  cprintf("inside sysproc pid: %d\n", pid);
-  if (pid == 0) {
-  
-    // if (exec() < 0) {
-    //   return -1;
-    // }
+  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
+    return -1;
   }
-
-  // if (wait() < 0) {
-  //   return -1;
-  // }
-  return pid;
+  memset(argv, 0, sizeof(argv));
+  for(i=0;; i++){
+    if(i >= NELEM(argv))
+      return -1;
+    if(fetchint(uargv+4*i, (int*)&uarg) < 0)
+      return -1;
+    if(uarg == 0){
+      argv[i] = 0;
+      break;
+    }
+    if(fetchstr(uarg, &argv[i]) < 0)
+      return -1;
+  }
+  return proc_newproc(path, argv);
 }
