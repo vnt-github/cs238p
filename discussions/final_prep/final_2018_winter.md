@@ -1,0 +1,15 @@
+- 1 a) solved: pending
+- 1 b) solved: pending
+- 2 a) solved: yes, from lectures and source code.
+- 2 b) solved: yes, from lectures and source code.
+- 3 a) solved: yes, guess and logic.
+- 3 b) solved: partially.
+- 3 c) solved: No, could not even think of how.
+- 4 a) solved: No, did not know that kernel cleans up all memory allocated byt the process immediately after it terminates.
+- 5 a) solved: partially, can't see how we'll get bbb bbb aaa, because child goes to sleep(1) after writing.
+- 5 b) solved: yes, from intuition to look for lock and then looking for source code for lock.
+- 6 a) solved: yes, from lectures.
+---
+- topics
+    - file system.
+    - processes and boot sequence.

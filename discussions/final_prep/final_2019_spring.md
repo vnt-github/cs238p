@@ -18,7 +18,7 @@ ii.) solved: Yes, the answer to the actual question i was able to answer in term
 - 1 b) solved: Yes, was able to answer in terms of thinking "what would happen if we don't".
 - 1 c) solved: Yes, source code searching and browsing and understanding.
 - 1 d) solved: No, missed the information leakage vulnerability. BETTER NOTES OF LECTURES AND MAKE CONNECTIONS TO OTHER QUESTIONS.
-- 1 e) Solved: doubt
+- 1 e) Solved: No, missed the context definition for switching.
 
 
 - 2 a) solved: yes, source code browsing and reasoning.
