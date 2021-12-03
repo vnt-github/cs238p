@@ -44,10 +44,12 @@
         "fcntl.h": "c",
         "syscall.h": "c",
         "proc.h": "c",
-        "defs.h": "c"
+        "defs.h": "c",
+        "x86.h": "c"
     },
     "cSpell.words": [
         "begning",
+        "journaling",
         "memcpy",
         "stdlib"
     ]
