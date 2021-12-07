@@ -20,8 +20,14 @@
 - when value greater that 32 bits occur the overflow flag is set in EFLAGS.
 - the bits that overflow will be lost.
 ---
+# Register and memory access cycles
+- CPU's Program counter/instruction pointer reads instructions from instruction cache: 2-3 cycles.
+- CPU writes to data cache: 2-3 cycles.
+- ALU is the part of CPU that does the actual arithmetic operations.
+---
 STACK: function calls
-
+- it's not written in stone that you need stack. there are subset of c compilers that compile without stack because there is only read only memory. like when bios boots, there is nothing to put on stack.
+- but generally we need stack to:
 - we need stack to call functions and **be able to return to the calling function**
 
 - stack grows up towards 0 address space.
@@ -35,7 +41,15 @@ STACK: function calls
     pop EAX # this is MOV EAX, [ESP]; ADD ESP, 4
     ```
     - NOTE: the memory of at previous location of ESP is still there, we just incremented the ESP for it to be overwritten later. Unless there is a security concern, then you wipe the values.
-
+```
+0x0                       0x80000000
+↓________________________↓
+|                |return |
+|                |address|       
+|________________|_______|
+                 ↑       ↑   
+        ESP after push   ESP before push
+```
 - other uses:
     - local data storage
     - parameter passing

@@ -67,7 +67,7 @@
 #VFS: virtual File System
 - allows one kernel to work with any File system that implements this VFS interface.
 - is the idea that all OS will fix the interface.
-- then then the kernel will use to functions of this VFS layer.
+- then the kernel will use to functions of this VFS layer.
 - and each file system will register functions for this VFS.
 ---
 - bit map: 
@@ -170,6 +170,8 @@ struct log {
 - maintains state of the journal.
 - outstanding: the number of outstanding transactions.
     - to be committed all at once.
+    - because you can execute multiple transaction in parallel.
+    - multiple different processes can do multiple system calls in parallel.
 - committing: flag weather the transaction is committing.
     - all subsequent system call will have to wait for transaction to commit.
 - start: which block number on the disk we have the first available space for storing the logging transactiona.
@@ -209,7 +211,12 @@ int tail;
 ![fs overview](./fs_overview.png)
 - buffer cache and log header are in memory
 ---
-- **EXAM: log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE; //what is this check in begin_op**
+- **EXAM: log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE; //what is this check in begin_op***
+    - log.outstanding counts the number of system calls that have reserved log space
+    - the total reserved space is log.outstanding times MAXOPBLOCKS.
+    - Incrementing log.outstanding both reserves space. 
+    - The code conservatively assumes that each system call might write up to MAXOPBLOCKS distinct blocks.
+    - transactions can touch the inode and bitmap area because when you add a block to a file essentially grow the file by one and you have to write into the bitmap area, to make sure that you mark this individual as taken.
 ---
 # bmap
 ```c

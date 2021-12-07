@@ -1,18 +1,18 @@
 - 1 a) solved: partially, from source code and lectures. Better Notes of lectures and revision
 - 1 b) solved: yes, source code and lecture slides. 
 - 1 c) solved: no, i could not have figured by reading the source code. NEED TO REVISIT LECTURES.
-- 1 d) solved: doubt.
+- 1 d) solved: yes.
 
-- 2 a) solved: pending
-- 2 b) solved: pending
+- 2 a) solved: partially
+- 2 b) solved: yes
 
 - 3 a) solved: yes, lectures and notes and source code.
 - 4 a) solved: yes, lectures and notes.
 - 4 b) solved: yes, lectures and notes.
 - 5 a) solved: yes, lectures and intuition.
 - 5 b) solved: yes, lectures and intuition.
-- 5 c) solved: pending.
-    - is hw_encrypt async?
+- 5 c) solved: yes, partially
+    - is hw_encrypt async? YES
 ```c
 struct {
     int encrypting;
@@ -21,17 +21,18 @@ struct {
 
 encrypt_block(cdev c, buffer b, key k) {
     while (1) {
+        acquire(&cd.lock);
         if (!cd.encrypting) {
-            acquire(&cd.lock);
             cd.encrypting = 1;
-            // NOTE: can we have release below?
-            // release(&cd.lock);
+            // NOTE: can we have release below? Yes
             hw_encrypt(b, k);
-            release(&cd.lock);
+            break;
         } else {
             sleep(cd, &cd.lock);
         }
     }
+    // NOTE: just like in solution you only release once done sending hw_encrypt call.
+    release(&cd.lock);
 }
 
 // trap.c

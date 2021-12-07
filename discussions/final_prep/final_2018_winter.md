@@ -1,5 +1,5 @@
-- 1 a) solved: pending
-- 1 b) solved: pending
+- 1 a) solved: No, too hard to reason about.
+- 1 b) solved: No, too hard to find about.
 - 2 a) solved: yes, from lectures and source code.
 - 2 b) solved: yes, from lectures and source code.
 - 3 a) solved: yes, guess and logic.

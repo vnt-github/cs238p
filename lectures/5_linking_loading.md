@@ -1,4 +1,4 @@
-- what parts fo we need to run.
+- what parts do we need to run.
     - data section
         - global initialized variables
     - bss: **Block Starting Symbol**
@@ -9,6 +9,7 @@
         - function calls
         - local variables
         - register overflows
+        - it's started even before main is called as main itself accepts arguments.
     - heap
         - dynamic variables.
 
@@ -106,7 +107,7 @@ d: disassemble the sections.
 - unresolved addresses
     - for unresolved addresses of global variables, functions, the compiler puts 0s.
 
-- There is a special section in the .elf file that tracks that a is defined and whenever a in data section changes we need to patch wherever it is used.
+- There is a special section(GOT-Global Offset Table) in the .elf file that tracks that a is defined and whenever a in data section changes we need to patch wherever it is used.
 - It also tracks b that is undefined and that puts the value of b address when resolved.
 
 ---
@@ -117,7 +118,7 @@ d: disassemble the sections.
 - why we need to define signature of the functions.
     - we will break calling convention otherwise of passing arguments via stack.
     - because we want to verify the type and numbers of arguments and return type.
-    - if we infer from function call then we let go of type checking.
+    - if we infer from function call then we let go of type checking and we also wont know what to expect in return value.
 ---
 - for global function that are defined elsewhere
     - compiler puts -ve address(e8 f3 ff ff ff) to call system call.

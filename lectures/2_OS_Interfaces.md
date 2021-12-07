@@ -51,6 +51,7 @@
     - sbrk(size): extends memory of a process, or decrease(when size is negative) my allocation.
 - interprocess communication.
     - dup(): create a duplicate of file descriptor.
+        - https://www.geeksforgeeks.org/dup-dup2-linux-system-call/
     - pipe(): allow to create a channel that connects two processes.
 - fork(), exec(): system call required to start new processes.
 - network: sockets()
@@ -118,11 +119,11 @@ close(0) #  this frees up the stdin FDT entry to be read for redirected file
 0 = open(ls.c) # this opens ls.c and sets first open FDT entry i.e. 0
 exec('cat') # note that cat works with 0 as input which is previously set to point to ls.c.
 ```
-- the above works because after fork the file descriptors are changed in child and it's reflected in the parent(piazza discussion for same)
+- the above works because after fork the file descriptors are changed in child before exec is run for specific command that uses stdin, stdout and std error with overridden file descriptors.
 
 - for pipes we can read and write from any file descriptor even same for input and output.
 
-- we close file descriptors so that exec program knows that there is nothing else to read/write from the pipe.
+- we close file descriptors so that child exec program knows that there is nothing else to read/write from the pipe.
     - on closing the OS will clean the pipe file descriptors.
 
 combo of fork()/exec()
@@ -138,7 +139,22 @@ combo of fork()/exec()
     - for small function calls this is a lot of overhead of copying shell.
     - if you don't have stdin, stdout, stderr. I have some window manager then we do not need exec()/fork() combo.
 ---
+- link(): create a link
+    - if you want two different offset into a file then use this.
 
+- during fork we DO NOT USE link so the parent and child will point to same in memory file data structure with same offset.
+- fork() just calls filedup() which just increases the ref count. so offset between the parent and child is shared.
+---
+- create a temporary file
+```c
+ fd = open("/tmp/xyz", O_CREATE|O_RDWR);
+ unlink("/tmp/xyz");
+```
+- unlink allows to delete a file.
+- unlink: there is no place in file system that refers to this inode.
+- the os file system garbage collects but as long as fd exists and program does not call close(fd), fd is valid.
+- as file does not have a name so it's guaranteed that it'll be cleaned later.
+---
 # Reading: The C Programming Language
 - *px++ = *(px++) = *(px+1) because the uniary operators are calculated from left to right.
 - array name is a constant so a = pa, a++ or p=&a are illegal. but when array name is passed to a function it's passed as a variable, because arguments are passed by value.

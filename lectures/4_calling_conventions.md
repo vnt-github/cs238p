@@ -7,7 +7,8 @@ WHY?
     - How to return values?
         - on th stack?
         - on the registers?
-
+    - How to maintain local variables?
+    - caller vs calee saved: How to registers values maintained in between calls.
 - conventions differ from compiler.
     - 99% of compilers using the below.
         - cdecl on 32 bit.
@@ -36,7 +37,7 @@ ___________________________________________________
 ```
 # VARIABLES
 
-GLOBAL VARIABLES: which are in global scope. 
+- GLOBAL VARIABLES: which are in global scope. 
     - initialized: maintained in data section. maintained in disk, pointers in code are patched by linker/loader.
     - uninitialized: maintained in BSS (text section). uninitialized are set to 0s.
 
@@ -51,8 +52,8 @@ int main(int ac, char **av) {
 ```
 
 DYNAMIC VARIABLES
-    - maintained in stack.
-    - sbrk system call allocate chunk of memory. On top of sbrk runs malloc which has metadata tracking regions of memory that is allocated and which is unallocated, free and empty. It only services regions in power of 2, so request to allocate 65 will get 128 but will give back 65 maintaining rest as unallocated.
+    - maintained in heap.
+    - sbrk system call allocate chunk of memory. On top of sbrk runs malloc which has metadata tracking regions of memory that is allocated and which is unallocated, free and empty. It only services regions in power of 2, so request to allocate 65 will get 128 bytes.
 
 ```c
 #include <stdio.h>
@@ -127,29 +128,36 @@ my_function(2, 5, 10);  // invoking
 push 10
 push 5
 push 2
-call _my_function
+call _my_function;  this will push the return address of the calling function inside the stack.
+add esp, 12; caller is also responsible for popping arguments out of the stack after the callee functions returns.  
 ```
 
 ---
 NOTE: below is for int argument and return values
+**STACK GROWS DOWNWARDS: ↓**
 ```x86asm
+
 address       stack
+0x80000000   |                       |
+...          |                       |
 0xb4         |                       |
 0xb0         |last argument: 10      | [ebp + 16 ](3rd function argument)
 0xac         |2nd last argument:  5  | [ebp + 12] (2nd function argument)
 0xa8         |3rd last argument:  2  | [ebp + 8] (1st function argument)
 0xa4         |calling fn return addr.| [ebp + 4] (return address) <- ESP right after CALL system call
-0xa0         |  FP                   | [ebp] (old ebp values) **<- EBP points here** which function EBP?
+0xa0         |  Frame Pointer        | [ebp] (old ebp values) **<- EBP points here** which function EBP?
 0x9c         |1st assigned local var.| [ebp-4] (1st local variable)
 0x98         |                       |
 0x94         |                       |
 0x90         |xth assigned local var.| [ebp-x*4] **<- ESP points here**
 0x8c         |                       | 
+...          |                       |
+0x0          |                       |
 ```
 - caller function pushes and pops the argument.
 - local variable optimization: if uninitialized variable is just present to return from function then compiler can skip allocating stack space to that return local variable as it uses EAX for that.
 
-- x86 has special instruction leave: to deallocate space for local variables and popping the stack.
+- x86 has special instruction **leave**: to deallocate space for local variables and popping the stack.
     ```
     mov esp, ebp
     pop ebp
@@ -160,3 +168,4 @@ address       stack
 - needs convention: what gets saved by the callee and caller.
     - caller saved: EAX, ECX & EDX so callee function is free to use them.
     - rest(like EBX) are calee saved: ie. if calee function uses it then it need push into stack and pop later to restore their original values.
+        - this is done in the context switch mechanism. 

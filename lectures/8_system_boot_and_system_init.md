@@ -6,10 +6,12 @@
     - management engine: secure technology intel boots before everything else.
     - micro code: pieces of softwares CPU runs to execute complicated instructions.
     - BIOS
-    - bootloaders
+    - bootloaders: must be loaded at address 0x7c00. 
     - kernel
 
 - hypervisor runs under OS in cloud, hence ring -1 privilege.
+- SMM: ring -2.
+- IME: ring -3
 ---
 - secure boot is an idea of chain of trust
 - started from some well known state, then measure all other stages like. intel management engine etc.
@@ -19,6 +21,9 @@
     - ME starts running
     - reads Firmware OS (probably some version of Minix) from Flash read only memory.
     - starts on of the processor ie. Bootstrap processor (BSP).
+    - then BST starts reading the BIOS and executes it.
+        - DRAM is disabled
+        - BIOS itself some loads proprietary blob of software from intel that initializes the memory.
 ---
 kernel physical address map from
 Physical: 1MB to Virtual: 2GB+1MB.
@@ -42,8 +47,13 @@ power on softwares chain
 - intel management engine
 - bios
     - starts system management mode: runs forever, even after boot sequence.
+    - System Management Mode (SMM): 
+        - layer of software which developer of the system boards puts it.
     - initializes firmware and all other devices.
+    - loads and pass control to boot-loader.
 - boot-loader.
+    - first this is it disable interrupts.
+    - then clears data segment(DS), extra segment(EA) and stack segment(SS) registers.
 
 ---
 - why not data section loaded in boot loader.
@@ -59,13 +69,15 @@ power on softwares chain
 ---
 - kernel is mapped twice in virtual memory and linear memory.
 - **why did we map kernel twice?**
+    - because kernel is linked to run with 2GB shift.
+    - and some parts of the currently running instructions inside the kernel also use without 2GB shift ie. use 1-to-1 mapping.
+        - ie. some instructions still running in 16 bits mode.
+    - so we need to resolve both to physical kernel hence it's mapped twice. 
 ---
 ```x86asm
 1160 # Jump to main(), and switch to executing at
-1161 # high addresses. The indirect call is
- needed because
-1162 # the assembler produces a PC−relative 
- instruction
+1161 # high addresses. The indirect call is needed because
+1162 # the assembler produces a PC−relative instruction
 1163 # for a direct jump.
 1164 mov $main, %eax
 1165 jmp *%eax
@@ -81,6 +93,8 @@ xv6/entry.S [kernel]
 - we did not create a return address on the stack, this is breaking the calling convention.
     - we don't care because we are not passing any arguments ie. int main(void)
     - if we had arguments then we should push some dummy return address, to make sure arguments are properly aligned on the stack wrt to the stack pointer after the invocation.
+---
+# SYSTEM INIT
 ---
 after main.c what's next
 - setup page tables.
@@ -102,9 +116,13 @@ after main.c what's next
 - why not to map kernel in the process virtual address space:
     - not to map the kernel to above addresses is to prevent MELTDOWN attacks.
 ---
+# REAL LINEAR ADDRESS LAYOUT
+![](./real_layout.png)
+---
 - why paging?
     - because user processes are not trustworthy and they need to be isolated with boundaries.
     - we can use segmentation for these boundaries but paging is much easier and flexible to work with.
+
 ---
 # memory after boot
 - xv6 never uses memory above  (0xe0000000)234MB (PHYSTOP)
@@ -122,6 +140,7 @@ after main.c what's next
     - unlike the previous memory for pages of 4KB from kernel data space we need an allocator because these pages for user processes needs to by dynamic.
 - why not to continue with 4MB pages.
     - cos the size of programs will be typically in kbs so 4MB would waste more space.
+    - ie. it will cause a lot of **INTERNAL FRAGMENTATION**.
 - a better way is to use a hybrid approach, ie 4MB for kernel and 4KB page sizes for user processes.
 ---
 - xv6 allocator allocator supports

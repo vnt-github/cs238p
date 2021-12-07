@@ -19,6 +19,9 @@
                 
 - what are we aiming for?
     - illusion of private address, so we don't have to reallocated and each program can start at it's private address space 0x00 (called logical address space).
+    - Identical copy of an address space in multiple programs, **We can implement fork()**.
+    - Isolation: Processes cannot access memory outside of their  segments
+
 
 - hardware adds base values to process memory, the base is configured by OS. chose bases st they don't overlap. There is size for each segment and accessing beyond it will terminate the process.
 
@@ -26,7 +29,7 @@
     - Hardware maintains and in-memory data structure to track it and a special register to keep and index into that table.
     - in-memory because we might have 100s of segments.
     - table = Global Descriptor table (GDP): table contains a base and a limit.
-    - special register = selector register
+    - special register = Segment register(CS-Code Segment, SS, DS, ES, FS, GS),
     - using this register for each process there is an entry in the GDP that transforms this Logical address space to linear address space by adding base.
     - two different process can have same logical address with different value byt with different linear address.
     - Hardware also implements the check on the limit of the segment for each process to enforce isolation.
@@ -36,6 +39,7 @@
     - loading GDT register value is privileged so normal processes can't change it.
 
 - default value of the ds(data segment), ss(stack segment), cs(code segment) is assumed to be of current process segment values.
+    - we infer code, data and stack segments from the instruction type
 - only if we jump to different segment then only we use it.
 ---
 - what are limitation os segmentation?
@@ -110,10 +114,7 @@ so in above it points to 5123 page number
         - bits 0-21 = 22 bits are offset, bits 22-31 = 10 bits is directory.
         - read only 18 bits of page directory.
 
----
-- 64 bit mode
-    - 9bits * 4 + 12 bits
-    - 2^9 = 512 entries, each entry 8 bytes.
+
 ---
 - during translation the values from the PDT ( page directory table ) are only read till 20 most significant bits.
 - because we only 20 bits to map the physical address.
@@ -122,3 +123,14 @@ so in above it points to 5123 page number
 ---
 PPN: physical page number.
 PDE: Pate directory Entry.
+
+---
+- logical -> linear -> virtual -> physical
+
+---
+- literals are present in the data segment just like global variables.
+---
+# 64 bit addresses
+- 64 bit mode
+    - 9bits * 4 + 12 bits
+    - 2^9 = 512 entries, each entry 8 bytes.

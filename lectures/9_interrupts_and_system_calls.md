@@ -4,21 +4,27 @@
     - it's entries are configured by the OS.
     - depending of interrupt it'll choose the entry in the descriptor entry table.
     - each entry will be the instruction pointer of the first instruction of the interrupt handler.
+        - the second entry may choses a different code segment from the GDT to allow for changing privilege from user to kernel on system calls. 
+            - without this user cannot change to kernel level.
+                - case 1: users uses CALL address_in_kernel_space
+                    - this faults during the page translation as user bit for kernel pages is not set.
+                - case 2: long jump: ljump kernel_segment, label_in_kernel,
+                    - this faults because GDT privilege level of kernel_segment is 0 and CPL is 3 and GDT does not allows this. 
 - why does hardware chose new stack which is configured by the operating system for interrupt handlers beforehand.
     - for security reasons, we can't trust users stack values, like:
         - user reloaded the current stack pointer to point to address 0 or to some unmapped page or point to data structure in kernel address space.
         - as interrupt handler operates in privilege level 0, so using users stack would allow user to accidentally override the data structure in the kernel by whatever interrupt handler will put in that physical address belonging to kernel data structure.
-
 - why do we need an interrupt handler stack in the first place.
+    - because hardware needs to save five registers that are immediately overridden during the interrupt transition.
     - because at some point the interrupt handler need to return and give control back to the user process.
     - so we need the stack to save the user interrupt pointer so that we can set the current instruction pointer to the stack saved user interrupt pointer before interrupt handler and return control to user process.
 
 - before interrupt handlers, 5 of the user register like Stack pointer and instruction pointer gets saved to registers that are not visible to use. Because the interrupt stack is not allocated yet. This is done in the 1st step of the exception handling ie. Write fault data to the exception registers.
 - after these the same fetch decode register read and execute cycle continues for interrupt handler.
 ---
-- interrupts: unexpected event from outside the process.
+- interrupts: event from outside the process.
     - they are asynchronous notifications from devices like network cards, timers etc.
-- exception: unexpected event from within the process.
+- exception: event from within the process.
     - they are synchronous
     - accessing unmapped page of memory or address.
 
@@ -63,7 +69,7 @@ Case #2: interrupt path with change in privilege level
     - so OS don't trust the value of ESP register, so it needs a fresh new stack.
 - so TSS: task state segment is used.
     - pointed by TR: task register.
-    - SS0: chooses stack data or stack segment for kernel
+    - SS0: chooses data or stack segment for kernel
         - at user level the stack segment was at ring level 3.
         - so chose new stack segment with matching ring level 0.
     - ESP0:
@@ -93,7 +99,7 @@ Case #2: interrupt path with change in privilege level
 - IDTR register contains base of IDT and its size.
 - each entry of IDT has a specific interrupt gate.
 - interrupt gate has pointer to interrupt handler
-    - it also had DPL.
+    - it also had DPL which checks the invokers CPL against the interrupts DPL so that user is limited to calling system call interrupt only.
 
 ---
 # Interrupt gate
@@ -134,6 +140,8 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
 
 ---
 - Disabling interrupts: only possible in ring level 0.
+    - this is done by setting FL_IF to 0 in EFLAGS, This is the 10th least significant bit in the EFLAGS.
+    - this will only disable asynchronous interrupts except for NMI (Non Maskable Interrupts).
     - if user process given process then he can go into infinite loops and run forever or execute the value of pi without timer interrupt.
     - OS will never get the timer interrupt delivered and won't be able to make a switch to another process to ensure fair allocation of CPU resources.
     - in code subsequent interrupts are also set in the SETGATE macro for the IDT table.
@@ -144,6 +152,7 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
 - why do we also have DPL in each entry in the IDT if we already have it in GDT entries?
     - the reason is to protect interrupt themselves.
     - user code can't invoke page fault interrupt(INT 14).
+        - user trying to call any interrupt besides system call will get **GENERAL PROTECTION FAULT** exception which is **interrupt vector 13**. 
     - normally this DPL in IDT is set to zero, so user can't can't call the above interrupt 14.
     - other interrupts like division by zero, async interrupts are done by hardware with Privilege level 0 so they still pass through.
 
@@ -164,13 +173,15 @@ ljump 1<<3, start32 ; the 1<<3 points to a entry in the GDT for code segment.
 ---
 # first thing to do in interrupts kernel code
     - need to save general registers of the current process.
+    - hardware do not save the general registers.
+    - because even executing instruction might change those instructions.
 ---
 - why do we have vector64, vector14 etc why can't we have a generic interrupt vector.
     - because we want to distinguish between different interrupt calls
     - pushing the interrupt number
 - why can't we save the distinguishing interrupt number in some register?
     - because this is only possible from user calls
-    - in case of hardware interrupts like division by zero we do not have that power.
+    - in case of hardware interrupts like division by zero we do not have that power because in that case we immediately land in the interrupt handler.
 
 ---
 - what is proc->sz

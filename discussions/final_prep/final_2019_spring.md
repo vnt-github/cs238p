@@ -26,10 +26,22 @@ ii.) solved: Yes, the answer to the actual question i was able to answer in term
 - 3 a) solved: yes, source code browsing and reasoning.
 - 3 b) solved:  yes, source code browsing and reasoning.
 
-- 4 a) solved: pending
-- 4 b) solved: pending
-- 4 c) solved: pending
-- 4 d) solved: pending
+- 4 a) solved: partially.
+- mine:
+    - the log block(2-31) is written twice per transaction. once for data write and ~~then with special commit indicating a complete operation~~
+- ans:
+    - the second is after transaction is installed the log header is updated with zeros.
+- 4 b) solved: yes
+- 4 c) solved: yes
+- 4 d) solved: partially, did not provide the code for modifications.
+- to double the maximum file size we need to introduce more indirections as follows
+    - 1st inode already have 12 addresses and 13th points to next indirect address block
+    - 2nd level provide addresses for 13 blocks and 14th entry redirect to next level
+    - 3rd level provides addresses to more 127 blocks and 128th points to the last level
+    - 4th and last level will have 128 blocks for addresses
+- to accommodate these all the source code handling redirection should be modified specifically bmap and iappend.
+- so in total we will have 12+13+127+128 = 280 address blocks addressed which is double the 140 blocks.
+    - 
 - 5 a) yes: yes, source code browsing and reasoning.
 
 ---

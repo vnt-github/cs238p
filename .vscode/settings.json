@@ -45,10 +45,14 @@
         "syscall.h": "c",
         "proc.h": "c",
         "defs.h": "c",
-        "x86.h": "c"
+        "x86.h": "c",
+        "*.def": "c",
+        "mman.h": "c",
+        "functional": "c"
     },
     "cSpell.words": [
         "begning",
+        "destructers",
         "journaling",
         "memcpy",
         "stdlib"
