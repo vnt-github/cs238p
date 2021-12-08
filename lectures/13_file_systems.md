@@ -112,7 +112,7 @@ struct inode {
         - the second layer of 128 block will have 4*128=512 bytes size.
     - for virtual file inode if you want to know which block number have the data for the ith (0 indexed, say 5th) block you just look up ith address for it.
 
-- the size of allocated for the inodes in the disk or size of the inodes arrays in memory limits the number of unique inodes you can have in the system.
+- the size allocated for the inodes in the disk or size of the inodes arrays in memory limits the number of unique inodes you can have in the system.
     - no of unique inodes = floor(size allocated for inodes / size of one inode)
     - as we can have multiple files for each inode the number of files is limited by the nlink limit.
         - no of unique files = no of unique inodes * max nlink value.

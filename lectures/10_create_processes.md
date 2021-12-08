@@ -50,6 +50,7 @@
 ---
 # Double mapping
 - each new page is mapped twice once for user and once for kernel.
+- because each page is always mapped in the kernel part of the process address space and will also become mapped in the user part of the process address space.
 - the moment you map a page in user part of address space will get mapped to kernel part of the address space.
     - the allocuvm mapped the user address space from ph.vaddr in the user address space.
     - the loaduvm loaded the content and mapped to the kernel space using readi(ip, P2V(pa), offset+i, n) != n).
@@ -67,10 +68,10 @@
 - how to make guard page throw exception on user access?
     - remove the user bit on that page?
 - why do we allocate the guard page altogether and just don't set the present bit to 1. that means that the page is not mapped at all.
-    - remember we were using the proc->sz boundary check.
+    - remember we were using the proc->sz boundary check during the **SYSTEM CALLS** check.
     - what if user passes us a pointer that is inside the guard page.
         - if page is not present then user fools us. it passes the proc->sz check and kernel tries to access this page which is not set present and faults with page fault and crashes.
-    - here xv6 sets the present bit to 1 and allows the user to write data in the guard page, without faulting.
+    - here xv6 sets the present bit to 1 and allows the user which passes guard page address to make kernel to write data in the guard page, without faulting.
 
 - **what changes need to be done to not waste extra guard page space?**
     - inside the process keep track of proc->guard page that keeps the position of guard page and check it during system calls validation that user does not access any address inside the proc->guard page, and kill the user if that the case.
@@ -84,13 +85,12 @@
 ---
 - arguments to main stack
 - foo hello world
-
-
-|
+```
+|                                                                          |
 |hello                                                                     | <- initial ESP
 |world                                                                     |
-|0|ptr to hello |  ptr to world| ptr to argv | argc:2 |dummy return address| <- argv array <- ESP
-
+|0|ptr to world |  ptr to hello| ptr to argv | argc:2 |dummy return address| <- argv array <- ESP
+```
 - have to put 4 bytes with some dummy return address.
 - may be put address above the 2GB range and be sure that it's user unmapped.
 - so in xv6 we use exit() instead of return here because of this.

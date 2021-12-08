@@ -2,7 +2,7 @@
     - BIOS starts BSP which start the Bootloader -> main-> mpmain.
     - startothers(): BSP sends interrupts to other Application Processors (AP) to wake then up.
         - with each interrupt we send a pointer to stack.
-        - interrupt itself sends pointer to entry point that each AP needs to start executing when they wake up.
+        - interrupt itself sends pointer to entry point that each AP needs to start executing when they wake up ie. mpenter.
 
 - each AP needs to start running an assembly sequence.
     - this assembly sequence can be anywhere in the memory as long as it's not used.
@@ -72,6 +72,42 @@
 2839    acquire(lk);
 2840 }
 
+
+  // Must acquire ptable.lock in order to
+  // change p->state and then call sched.
+  // Once we hold ptable.lock, we can be
+  // guaranteed that we won't miss any wakeup
+  // (wakeup runs with ptable.lock locked),
+  // so it's okay to release lk.
+  if(lk != &ptable.lock){  //DOC: sleeplock0
+    acquire(&ptable.lock);  //DOC: sleeplock1
+    release(lk);
+  }
+```
 - **why line 2838 and 2839 is not flipped**?
     - i read the book and got more confused.
-```
+
+- [Ans](https://www.cse.iitb.ac.in/~mythili/os/ps/xv6/ps-xv6-sync.pdf): A wakeup may run between the release and acquire steps, leading to a missed wakeup.
+
+---
+- acquire: wait to get permission to enter into critical section.
+    - busy waits
+    - pushcli: disable interrupts to prevent deadlock.
+- release:
+    - popcli: enable interrupts.
+
+- sleep:
+    - channel: sleep on channel wait for wakeup
+    - lock: pass the lock to **release** it **ATOMICALLY**.
+        - no one else can send wakeup and we miss it.
+            - This is done using global ptable.lock
+            - all wakeup will also try to acquire ptable.lock
+        - ON **WAKEUP** WE **RE-ACQUIRE THE LOCK**.
+            - so only **ONE** Sleeper acquires lock and wakes up.
+- wakeup:
+    - channel: wake up all sleepers.
+
+---
+- INTERRUPT: . and think weather can interrupt come here and mess things up.
+![context switch recap](./context_switch_recap.png)
+![context switch recap](./context_switch_recap2.png)
